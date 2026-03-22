@@ -1,0 +1,18 @@
+spring:
+  jpa:
+    show-sql: true
+
+  flyway:
+    enabled: true
+
+app:
+  worker:
+    auction-closure:
+      enabled: false
+    outbox:
+      enabled: false
+
+logging:
+  level:
+    com.leilao: DEBUG
+    org.hibernate.SQL: DEBUG

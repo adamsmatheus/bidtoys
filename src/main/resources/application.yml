@@ -1,0 +1,96 @@
+spring:
+  application:
+    name: leilao-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/leilao
+    username: leilao
+    password: leilao
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: public
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+app:
+  jwt:
+    secret: "your-256-bit-secret-key-change-this-in-production-must-be-at-least-32-chars"
+    expiration-ms: 86400000   # 24 horas
+  worker:
+    auction-closure:
+      cron: "0 * * * * *"    # a cada minuto
+      enabled: true
+    outbox:
+      cron: "*/30 * * * * *" # a cada 30 segundos
+      enabled: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  default-produces-media-type: application/json
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    com.leilao: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: api
+
+---
+spring:
+  config:
+    activate:
+      on-profile: worker
+
+  flyway:
+    enabled: false
+
+logging:
+  level:
+    com.leilao.worker: DEBUG
