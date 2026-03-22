@@ -3,6 +3,7 @@ package com.leilao.backend.users.application
 import com.leilao.backend.shared.exception.NotFoundException
 import com.leilao.backend.users.api.dto.UpdateUserRequest
 import com.leilao.backend.users.domain.User
+import com.leilao.backend.users.domain.UserRole
 import com.leilao.backend.users.domain.UserStatus
 import com.leilao.backend.users.infrastructure.UserRepository
 import org.springframework.stereotype.Service
@@ -30,6 +31,14 @@ class UpdateUserUseCase(
             }
         }
 
+        return userRepository.save(user)
+    }
+
+    @Transactional
+    fun promoteToAdmin(id: UUID): User {
+        val user = userRepository.findById(id)
+            .orElseThrow { NotFoundException("Usuário não encontrado") }
+        user.role = UserRole.ADMIN
         return userRepository.save(user)
     }
 }
