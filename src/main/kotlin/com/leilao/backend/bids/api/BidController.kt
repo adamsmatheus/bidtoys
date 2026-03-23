@@ -1,5 +1,6 @@
 package com.leilao.backend.bids.api
 
+import com.leilao.backend.auctions.application.AuctionBroadcastService
 import com.leilao.backend.bids.api.dto.BidResponse
 import com.leilao.backend.bids.api.dto.PlaceBidRequest
 import com.leilao.backend.bids.application.PlaceBidUseCase
@@ -28,7 +29,8 @@ import java.util.UUID
 @Tag(name = "Bids", description = "Lances em leilões")
 class BidController(
     private val placeBidUseCase: PlaceBidUseCase,
-    private val bidRepository: BidRepository
+    private val bidRepository: BidRepository,
+    private val auctionBroadcastService: AuctionBroadcastService
 ) {
 
     @PostMapping
@@ -39,8 +41,9 @@ class BidController(
         @Valid @RequestBody request: PlaceBidRequest,
         @AuthenticationPrincipal principal: UserPrincipal
     ): BidResponse {
-        val bid = placeBidUseCase.execute(auctionId, request, principal.id)
-        return BidResponse.from(bid)
+        val result = placeBidUseCase.execute(auctionId, request, principal.id)
+        auctionBroadcastService.broadcastNewBid(result.bid, result.auction)
+        return BidResponse.from(result.bid)
     }
 
     @GetMapping
@@ -51,7 +54,7 @@ class BidController(
         @RequestParam(defaultValue = "20") size: Int
     ): PageResponse<BidResponse> {
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-        val result = bidRepository.findByAuctionIdOrderByCreatedAtDesc(auctionId, pageable)
+        val result = bidRepository.findByAuction_IdOrderByCreatedAtDesc(auctionId, pageable)
         return PageResponse.from(result.map { BidResponse.from(it) })
     }
 }

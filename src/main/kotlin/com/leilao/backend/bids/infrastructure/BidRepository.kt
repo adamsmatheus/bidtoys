@@ -10,7 +10,7 @@ import java.util.UUID
 
 @Repository
 interface BidRepository : JpaRepository<Bid, UUID> {
-    fun countByAuctionId(auctionId: UUID): Long
-    fun findByAuctionIdOrderByCreatedAtDesc(auctionId: UUID, pageable: Pageable): Page<Bid>
+    fun countByAuction_Id(auctionId: UUID): Long
+    fun findByAuction_IdOrderByCreatedAtDesc(auctionId: UUID, pageable: Pageable): Page<Bid>
     fun findByRequestId(requestId: String): Optional<Bid>
 }

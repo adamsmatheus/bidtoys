@@ -3,19 +3,9 @@ package com.leilao.backend.users.api.dto
 import com.leilao.backend.users.domain.User
 import com.leilao.backend.users.domain.UserRole
 import com.leilao.backend.users.domain.UserStatus
-import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.Size
 import java.time.Instant
 import java.util.UUID
-
-data class CreateUserRequest(
-    @field:NotBlank val name: String,
-    @field:Email @field:NotBlank val email: String,
-    @field:NotBlank @field:Size(min = 6) val password: String,
-    val phoneNumber: String? = null,
-    val whatsappEnabled: Boolean = false
-)
 
 data class UpdateUserRequest(
     @field:NotBlank val name: String? = null,

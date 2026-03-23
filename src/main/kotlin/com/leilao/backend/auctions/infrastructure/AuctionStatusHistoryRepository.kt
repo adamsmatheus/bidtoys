@@ -7,5 +7,5 @@ import java.util.UUID
 
 @Repository
 interface AuctionStatusHistoryRepository : JpaRepository<AuctionStatusHistory, UUID> {
-    fun findByAuctionIdOrderByCreatedAtAsc(auctionId: UUID): List<AuctionStatusHistory>
+    fun findByAuction_IdOrderByCreatedAtAsc(auctionId: UUID): List<AuctionStatusHistory>
 }

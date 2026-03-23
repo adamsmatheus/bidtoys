@@ -32,6 +32,8 @@ class SecurityConfig(
                     // Public endpoints
                     .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                    // WebSocket
+                    .requestMatchers("/ws/**").permitAll()
                     // Swagger / OpenAPI
                     .requestMatchers(
                         "/swagger-ui.html",

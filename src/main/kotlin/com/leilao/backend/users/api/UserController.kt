@@ -1,10 +1,8 @@
 package com.leilao.backend.users.api
 
 import com.leilao.backend.shared.security.UserPrincipal
-import com.leilao.backend.users.api.dto.CreateUserRequest
 import com.leilao.backend.users.api.dto.UpdateUserRequest
 import com.leilao.backend.users.api.dto.UserResponse
-import com.leilao.backend.users.application.CreateUserUseCase
 import com.leilao.backend.users.application.DeleteUserUseCase
 import com.leilao.backend.users.application.GetUserUseCase
 import com.leilao.backend.users.application.UpdateUserUseCase
@@ -18,7 +16,6 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -31,7 +28,6 @@ import java.util.UUID
 @Tag(name = "Users", description = "Gerenciamento de usuários")
 class UserController(
     private val getUserUseCase: GetUserUseCase,
-    private val createUserUseCase: CreateUserUseCase,
     private val updateUserUseCase: UpdateUserUseCase,
     private val deleteUserUseCase: DeleteUserUseCase
 ) {
@@ -50,13 +46,6 @@ class UserController(
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Retorna um usuário pelo ID")
     fun findById(@PathVariable id: UUID): UserResponse = UserResponse.from(getUserUseCase.execute(id))
-
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Cria um novo usuário")
-    fun create(@Valid @RequestBody request: CreateUserRequest): UserResponse =
-        UserResponse.from(createUserUseCase.execute(request))
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")

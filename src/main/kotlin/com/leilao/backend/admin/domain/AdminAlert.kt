@@ -31,15 +31,15 @@ class AdminAlert(
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     var status: AdminAlertStatus = AdminAlertStatus.OPEN
-        private set
+        protected set
 
     @Column(name = "resolved_at")
     var resolvedAt: Instant? = null
-        private set
+        protected set
 
     @Column(name = "resolved_by_user_id")
     var resolvedByUserId: UUID? = null
-        private set
+        protected set
 
     fun resolve(resolvedByUserId: UUID) {
         status = AdminAlertStatus.RESOLVED

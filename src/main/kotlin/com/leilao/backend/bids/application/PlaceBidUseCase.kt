@@ -1,9 +1,10 @@
 package com.leilao.backend.bids.application
 
+import com.leilao.backend.auctions.domain.Auction
+import com.leilao.backend.auctions.infrastructure.AuctionRepository
 import com.leilao.backend.bids.api.dto.PlaceBidRequest
 import com.leilao.backend.bids.domain.Bid
 import com.leilao.backend.bids.infrastructure.BidRepository
-import com.leilao.backend.auctions.infrastructure.AuctionRepository
 import com.leilao.backend.shared.exception.BusinessException
 import com.leilao.backend.shared.exception.ForbiddenException
 import com.leilao.backend.shared.exception.InvalidStateException
@@ -14,6 +15,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
+
+data class PlaceBidResult(val bid: Bid, val auction: Auction)
 
 @Service
 class PlaceBidUseCase(
@@ -37,13 +40,16 @@ class PlaceBidUseCase(
      * sejam resolvidos pelo timestamp de persistência (quem commita primeiro).
      */
     @Transactional
-    fun execute(auctionId: UUID, request: PlaceBidRequest, bidderId: UUID): Bid {
+    fun execute(auctionId: UUID, request: PlaceBidRequest, bidderId: UUID): PlaceBidResult {
         // Idempotência: se já existe um bid com esse requestId, retorna ele
         if (request.requestId != null) {
             val existing = bidRepository.findByRequestId(request.requestId)
             if (existing.isPresent) {
                 log.debug("Lance idempotente encontrado para requestId {}", request.requestId)
-                return existing.get()
+                val existingBid = existing.get()
+                val existingAuction = auctionRepository.findById(existingBid.auctionId)
+                    .orElseThrow { NotFoundException("Leilão não encontrado") }
+                return PlaceBidResult(existingBid, existingAuction)
             }
         }
 
@@ -93,6 +99,6 @@ class PlaceBidUseCase(
 
         log.info("Lance R$ {} registrado no leilão {} por usuário {}", bid.amount, auctionId, bidderId)
 
-        return bid
+        return PlaceBidResult(bid, auction)
     }
 }

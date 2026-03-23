@@ -21,7 +21,8 @@ class FinishAuctionUseCase(
     private val bidRepository: BidRepository,
     private val outboxEventRepository: OutboxEventRepository,
     private val statusHistoryRepository: AuctionStatusHistoryRepository,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val auctionBroadcastService: AuctionBroadcastService
 ) {
 
     private val log = LoggerFactory.getLogger(FinishAuctionUseCase::class.java)
@@ -42,7 +43,7 @@ class FinishAuctionUseCase(
         }
 
         val fromStatus = auction.status
-        val bidCount = bidRepository.countByAuctionId(auctionId)
+        val bidCount = bidRepository.countByAuction_Id(auctionId)
 
         if (bidCount == 0L) {
             auction.finishNoBids()
@@ -60,6 +61,7 @@ class FinishAuctionUseCase(
         }
 
         auctionRepository.save(auction)
+        auctionBroadcastService.broadcastAuctionFinished(auction)
     }
 
     private fun saveStatusHistory(

@@ -35,23 +35,23 @@ class Notification(
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     var status: NotificationStatus = NotificationStatus.PENDING
-        private set
+        protected set
 
     @Column(name = "provider_message_id", length = 255)
     var providerMessageId: String? = null
-        private set
+        protected set
 
     @Column(name = "error_message", columnDefinition = "TEXT")
     var errorMessage: String? = null
-        private set
+        protected set
 
     @Column(name = "retry_count", nullable = false)
     var retryCount: Int = 0
-        private set
+        protected set
 
     @Column(name = "sent_at")
     var sentAt: Instant? = null
-        private set
+        protected set
 
     fun markSent(providerMessageId: String? = null) {
         status = NotificationStatus.SENT

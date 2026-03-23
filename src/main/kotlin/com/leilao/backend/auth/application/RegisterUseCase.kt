@@ -24,7 +24,8 @@ class RegisterUseCase(
             name = request.name,
             email = request.email.lowercase().trim(),
             passwordHash = passwordEncoder.encode(request.password),
-            phoneNumber = request.phoneNumber
+            phoneNumber = request.phoneNumber,
+            whatsappEnabled = request.whatsappEnabled
         )
 
         return userRepository.save(user)

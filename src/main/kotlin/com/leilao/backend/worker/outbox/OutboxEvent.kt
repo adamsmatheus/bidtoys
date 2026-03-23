@@ -40,19 +40,19 @@ class OutboxEvent(
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     var status: OutboxEventStatus = OutboxEventStatus.PENDING
-        private set
+        protected set
 
     @Column(name = "processed_at")
     var processedAt: Instant? = null
-        private set
+        protected set
 
     @Column(name = "retry_count", nullable = false)
     var retryCount: Int = 0
-        private set
+        protected set
 
     @Column(name = "last_error", columnDefinition = "TEXT")
     var lastError: String? = null
-        private set
+        protected set
 
     fun markProcessing() {
         status = OutboxEventStatus.PROCESSING

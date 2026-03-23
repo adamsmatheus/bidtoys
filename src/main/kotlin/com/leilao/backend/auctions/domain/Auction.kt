@@ -42,68 +42,68 @@ class Auction(
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     var status: AuctionStatus = AuctionStatus.DRAFT
-        private set
+        protected set
 
     @Column(name = "current_price_amount", nullable = false)
     var currentPriceAmount: Int = initialPriceAmount
-        private set
+        protected set
 
     @Column(name = "started_at")
     var startedAt: Instant? = null
-        private set
+        protected set
 
     @Column(name = "ends_at")
     var endsAt: Instant? = null
-        private set
+        protected set
 
     @Column(name = "approved_by_user_id")
     var approvedByUserId: UUID? = null
-        private set
+        protected set
 
     @Column(name = "approved_at")
     var approvedAt: Instant? = null
-        private set
+        protected set
 
     @Column(name = "rejected_by_user_id")
     var rejectedByUserId: UUID? = null
-        private set
+        protected set
 
     @Column(name = "rejected_at")
     var rejectedAt: Instant? = null
-        private set
+        protected set
 
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     var rejectionReason: String? = null
-        private set
+        protected set
 
     @Column(name = "cancelled_by_user_id")
     var cancelledByUserId: UUID? = null
-        private set
+        protected set
 
     @Column(name = "cancelled_at")
     var cancelledAt: Instant? = null
-        private set
+        protected set
 
     @Column(name = "cancellation_reason", columnDefinition = "TEXT")
     var cancellationReason: String? = null
-        private set
+        protected set
 
     @Column(name = "leading_bid_id")
     var leadingBidId: UUID? = null
-        private set
+        protected set
 
     @Column(name = "winner_user_id")
     var winnerUserId: UUID? = null
-        private set
+        protected set
 
     @Column(name = "finished_at")
     var finishedAt: Instant? = null
-        private set
+        protected set
 
     @Version
     @Column(name = "version", nullable = false)
     var version: Long = 0
-        private set
+        protected set
 
     // --- Transições de estado ---
 
