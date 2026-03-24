@@ -33,4 +33,12 @@ class FakeWhatsAppGateway : WhatsAppGateway {
 
         return fakeMessageId
     }
+
+    override fun sendVerificationCode(phoneNumber: String, code: String) {
+        log.info(
+            "[FAKE WhatsApp] Código de verificação para {}: {}",
+            phoneNumber,
+            code
+        )
+    }
 }

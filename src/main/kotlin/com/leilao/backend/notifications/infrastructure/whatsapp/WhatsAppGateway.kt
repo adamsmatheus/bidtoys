@@ -12,6 +12,12 @@ interface WhatsAppGateway {
      * @throws WhatsAppSendException em caso de falha no envio
      */
     fun sendWinnerMessage(phoneNumber: String, winnerMessage: WinnerMessagePayload): String
+
+    /**
+     * Envia código de verificação de 6 dígitos para confirmação do número de WhatsApp.
+     * @throws WhatsAppSendException em caso de falha no envio
+     */
+    fun sendVerificationCode(phoneNumber: String, code: String)
 }
 
 data class WinnerMessagePayload(

@@ -18,9 +18,16 @@ data class RegisterRequest(
     @field:Size(min = 6, message = "Senha deve ter no mínimo 6 caracteres")
     val password: String,
 
-    val phoneNumber: String? = null,
+    @field:NotBlank(message = "Número de WhatsApp é obrigatório")
+    val whatsappNumber: String,
 
-    val whatsappEnabled: Boolean = false
+    @field:NotBlank(message = "Código de verificação é obrigatório")
+    val verificationCode: String
+)
+
+data class SendWhatsAppCodeRequest(
+    @field:NotBlank(message = "Número de WhatsApp é obrigatório")
+    val phoneNumber: String
 )
 
 data class LoginRequest(

@@ -20,11 +20,11 @@ class User(
     @Column(name = "password_hash", nullable = false)
     var passwordHash: String,
 
-    @Column(name = "phone_number", length = 20)
-    var phoneNumber: String? = null,
+    @Column(name = "phone_number", nullable = false, length = 20)
+    var phoneNumber: String,
 
     @Column(name = "whatsapp_enabled", nullable = false)
-    var whatsappEnabled: Boolean = false,
+    var whatsappEnabled: Boolean = true,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)

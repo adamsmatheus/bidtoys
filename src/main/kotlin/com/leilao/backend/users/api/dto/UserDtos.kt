@@ -19,7 +19,7 @@ data class UserResponse(
     val id: UUID,
     val name: String,
     val email: String,
-    val phoneNumber: String?,
+    val phoneNumber: String,
     val whatsappEnabled: Boolean,
     val role: UserRole,
     val status: UserStatus,

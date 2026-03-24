@@ -56,11 +56,11 @@ class SendWinnerNotificationUseCase(
             )
         )
 
-        if (!winner.whatsappEnabled || winner.phoneNumber.isNullOrBlank()) {
-            log.warn("Vencedor {} não tem WhatsApp habilitado ou número cadastrado", command.winnerUserId)
-            notification.markFailed("WhatsApp não habilitado ou número não cadastrado")
+        if (!winner.whatsappEnabled) {
+            log.warn("Vencedor {} não tem WhatsApp habilitado", command.winnerUserId)
+            notification.markFailed("WhatsApp não habilitado")
             notificationRepository.save(notification)
-            createAdminAlert(command, "Vencedor sem WhatsApp configurado: ${winner.email}")
+            createAdminAlert(command, "Vencedor sem WhatsApp habilitado: ${winner.email}")
             return
         }
 
@@ -72,7 +72,7 @@ class SendWinnerNotificationUseCase(
                 auctionId = command.auctionId.toString()
             )
 
-            val providerMessageId = whatsAppGateway.sendWinnerMessage(winner.phoneNumber!!, messagePayload)
+            val providerMessageId = whatsAppGateway.sendWinnerMessage(winner.phoneNumber, messagePayload)
 
             notification.markSent(providerMessageId)
             notificationRepository.save(notification)

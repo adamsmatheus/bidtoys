@@ -32,6 +32,9 @@ class SecurityConfig(
                     // Public endpoints
                     .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/whatsapp/send-code").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/auctions").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/auctions/{id}").permitAll()
                     // WebSocket
                     .requestMatchers("/ws/**").permitAll()
                     // Swagger / OpenAPI
