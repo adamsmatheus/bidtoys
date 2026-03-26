@@ -1,8 +1,31 @@
 package com.leilao.backend.auth.api.dto
 
+import jakarta.validation.Valid
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
+
+data class AddressRequest(
+    @field:NotBlank(message = "CEP é obrigatório")
+    @field:Size(min = 8, max = 9, message = "CEP inválido")
+    val cep: String,
+
+    @field:NotBlank(message = "Rua é obrigatória")
+    val street: String,
+
+    @field:NotBlank(message = "Cidade é obrigatória")
+    val city: String,
+
+    @field:NotBlank(message = "Estado é obrigatório")
+    @field:Size(min = 2, max = 2, message = "Estado deve ter 2 caracteres")
+    val state: String,
+
+    @field:NotBlank(message = "Número é obrigatório")
+    val number: String,
+
+    val complement: String? = null
+)
 
 data class RegisterRequest(
 
@@ -22,7 +45,11 @@ data class RegisterRequest(
     val whatsappNumber: String,
 
     @field:NotBlank(message = "Código de verificação é obrigatório")
-    val verificationCode: String
+    val verificationCode: String,
+
+    @field:NotNull(message = "Endereço é obrigatório")
+    @field:Valid
+    val address: AddressRequest
 )
 
 data class SendWhatsAppCodeRequest(

@@ -1,10 +1,12 @@
 package com.leilao.backend.users.domain
 
 import com.leilao.backend.shared.domain.AuditableEntity
+import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
 
 @Entity
@@ -32,7 +34,10 @@ class User(
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    var status: UserStatus = UserStatus.ACTIVE
+    var status: UserStatus = UserStatus.ACTIVE,
+
+    @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL])
+    var address: UserAddress? = null
 
 ) : AuditableEntity() {
 

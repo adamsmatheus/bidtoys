@@ -1,17 +1,21 @@
 package com.leilao.backend.auctions.api
 
+import com.leilao.backend.auctions.api.dto.AuctionImageResponse
 import com.leilao.backend.auctions.api.dto.AuctionResponse
 import com.leilao.backend.auctions.api.dto.CancelAuctionRequest
 import com.leilao.backend.auctions.api.dto.CreateAuctionRequest
 import com.leilao.backend.auctions.api.dto.UpdateAuctionRequest
 import com.leilao.backend.auctions.application.CancelAuctionUseCase
 import com.leilao.backend.auctions.application.CreateAuctionUseCase
+import com.leilao.backend.auctions.application.DeleteAuctionImageUseCase
 import com.leilao.backend.auctions.application.GetAuctionUseCase
 import com.leilao.backend.auctions.application.ListAuctionsUseCase
 import com.leilao.backend.auctions.application.StartAuctionUseCase
 import com.leilao.backend.auctions.application.SubmitForApprovalUseCase
 import com.leilao.backend.auctions.application.UpdateAuctionUseCase
+import com.leilao.backend.auctions.application.UploadAuctionImageUseCase
 import com.leilao.backend.auctions.domain.AuctionStatus
+import com.leilao.backend.auctions.infrastructure.AuctionImageRepository
 import com.leilao.backend.shared.api.PageResponse
 import com.leilao.backend.shared.security.UserPrincipal
 import io.swagger.v3.oas.annotations.Operation
@@ -20,9 +24,10 @@ import jakarta.validation.Valid
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -31,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.multipart.MultipartFile
 import java.util.UUID
 
 @RestController
@@ -43,7 +49,10 @@ class AuctionController(
     private val startAuctionUseCase: StartAuctionUseCase,
     private val cancelAuctionUseCase: CancelAuctionUseCase,
     private val getAuctionUseCase: GetAuctionUseCase,
-    private val listAuctionsUseCase: ListAuctionsUseCase
+    private val listAuctionsUseCase: ListAuctionsUseCase,
+    private val uploadAuctionImageUseCase: UploadAuctionImageUseCase,
+    private val deleteAuctionImageUseCase: DeleteAuctionImageUseCase,
+    private val auctionImageRepository: AuctionImageRepository
 ) {
 
     @PostMapping
@@ -97,7 +106,9 @@ class AuctionController(
     @GetMapping("/{id}")
     @Operation(summary = "Busca detalhe de um leilão")
     fun getById(@PathVariable id: UUID): AuctionResponse {
-        return AuctionResponse.from(getAuctionUseCase.execute(id))
+        val auction = getAuctionUseCase.execute(id)
+        val images = auctionImageRepository.findByAuction_IdOrderByPositionAsc(auction.id)
+        return AuctionResponse.from(auction, images)
     }
 
     @GetMapping
@@ -110,5 +121,27 @@ class AuctionController(
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
         val result = listAuctionsUseCase.execute(status, pageable)
         return PageResponse.from(result.map { AuctionResponse.from(it) })
+    }
+
+    @PostMapping("/{id}/images", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Adiciona uma foto ao leilão (máx. 5, somente DRAFT ou REJECTED)")
+    fun uploadImage(
+        @PathVariable id: UUID,
+        @RequestParam("file") file: MultipartFile,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ): AuctionImageResponse {
+        return uploadAuctionImageUseCase.execute(id, principal.id, file)
+    }
+
+    @DeleteMapping("/{id}/images/{imageId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Remove uma foto do leilão (somente DRAFT ou REJECTED)")
+    fun deleteImage(
+        @PathVariable id: UUID,
+        @PathVariable imageId: UUID,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ) {
+        deleteAuctionImageUseCase.execute(id, imageId, principal.id)
     }
 }

@@ -44,6 +44,9 @@ app:
   jwt:
     secret: "your-256-bit-secret-key-change-this-in-production-must-be-at-least-32-chars"
     expiration-ms: 86400000   # 24 horas
+  storage:
+    upload-dir: ./uploads
+    base-url: http://localhost:8080
   worker:
     auction-closure:
       cron: "0 * * * * *"    # a cada minuto

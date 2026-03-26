@@ -4,6 +4,7 @@ import com.leilao.backend.auth.api.dto.RegisterRequest
 import com.leilao.backend.shared.exception.BusinessException
 import com.leilao.backend.shared.exception.ConflictException
 import com.leilao.backend.users.domain.User
+import com.leilao.backend.users.domain.UserAddress
 import com.leilao.backend.users.infrastructure.UserRepository
 import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -38,6 +39,17 @@ class RegisterUseCase(
             phoneNumber = request.whatsappNumber,
             whatsappEnabled = true
         )
+
+        val address = UserAddress(
+            user = user,
+            cep = request.address.cep,
+            street = request.address.street,
+            city = request.address.city,
+            state = request.address.state,
+            number = request.address.number,
+            complement = request.address.complement
+        )
+        user.address = address
 
         val saved = userRepository.save(user)
         verificationStore.remove(request.whatsappNumber)

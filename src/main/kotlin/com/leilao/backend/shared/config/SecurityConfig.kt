@@ -44,6 +44,8 @@ class SecurityConfig(
                         "/api-docs",
                         "/api-docs/**"
                     ).permitAll()
+                    // Static files (uploaded images)
+                    .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
                     // Actuator
                     .requestMatchers("/actuator/health").permitAll()
                     // Admin routes

@@ -1,6 +1,7 @@
 package com.leilao.backend.auctions.api.dto
 
 import com.leilao.backend.auctions.domain.Auction
+import com.leilao.backend.auctions.domain.AuctionImage
 import com.leilao.backend.auctions.domain.AuctionStatus
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
@@ -8,6 +9,12 @@ import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
 import java.time.Instant
 import java.util.UUID
+
+data class AuctionImageResponse(
+    val id: UUID,
+    val fileUrl: String,
+    val position: Int
+)
 
 data class CreateAuctionRequest(
 
@@ -65,10 +72,11 @@ data class AuctionResponse(
     val winnerUserId: UUID?,
     val finishedAt: Instant?,
     val createdAt: Instant,
-    val updatedAt: Instant
+    val updatedAt: Instant,
+    val images: List<AuctionImageResponse> = emptyList()
 ) {
     companion object {
-        fun from(auction: Auction) = AuctionResponse(
+        fun from(auction: Auction, images: List<AuctionImage> = emptyList()) = AuctionResponse(
             id = auction.id,
             sellerId = auction.seller.id,
             sellerName = auction.seller.name,
@@ -86,7 +94,8 @@ data class AuctionResponse(
             winnerUserId = auction.winnerUserId,
             finishedAt = auction.finishedAt,
             createdAt = auction.createdAt,
-            updatedAt = auction.updatedAt
+            updatedAt = auction.updatedAt,
+            images = images.map { AuctionImageResponse(it.id, it.fileUrl, it.position) }
         )
     }
 }
