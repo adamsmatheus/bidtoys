@@ -28,6 +28,7 @@ repositories {
 val jjwtVersion = "0.12.5"
 val testcontainersVersion = "1.19.7"
 val springdocVersion = "2.4.0"
+val minioVersion = "8.5.9"
 
 dependencies {
     // Spring Boot
@@ -51,6 +52,9 @@ dependencies {
     // Database
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.flywaydb:flyway-core")
+
+    // MinIO
+    implementation("io.minio:minio:$minioVersion")
 
     // OpenAPI / Swagger
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")

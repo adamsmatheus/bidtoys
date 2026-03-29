@@ -30,4 +30,8 @@ interface AuctionRepository : JpaRepository<Auction, UUID> {
     fun findExpiredActiveAuctions(now: Instant): List<Auction>
 
     fun findBySellerId(sellerId: UUID, pageable: Pageable): Page<Auction>
+
+    fun findBySellerIdAndStatus(sellerId: UUID, status: AuctionStatus, pageable: Pageable): Page<Auction>
+
+    fun existsBySellerIdAndStatusNotIn(sellerId: UUID, statuses: Collection<AuctionStatus>): Boolean
 }

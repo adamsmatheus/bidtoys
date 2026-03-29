@@ -33,6 +33,11 @@ spring:
       port: 6379
       timeout: 2000ms
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
   jackson:
     default-property-inclusion: non_null
     serialization:
@@ -47,6 +52,12 @@ app:
   storage:
     upload-dir: ./uploads
     base-url: http://localhost:8080
+    minio:
+      endpoint: http://localhost:9000
+      access-key: minioadmin
+      secret-key: minioadmin
+      bucket: leilao
+      public-url: http://localhost:9000
   worker:
     auction-closure:
       cron: "0 * * * * *"    # a cada minuto

@@ -7,6 +7,7 @@ import com.leilao.backend.auctions.domain.AuctionStatus
 import com.leilao.backend.auctions.domain.AuctionStatusHistory
 import com.leilao.backend.auctions.infrastructure.AuctionRepository
 import com.leilao.backend.auctions.infrastructure.AuctionStatusHistoryRepository
+import com.leilao.backend.companies.infrastructure.CompanyRepository
 import com.leilao.backend.shared.exception.ForbiddenException
 import com.leilao.backend.shared.exception.InvalidStateException
 import com.leilao.backend.shared.exception.NotFoundException
@@ -21,10 +22,18 @@ import java.util.UUID
 class CreateAuctionUseCase(
     private val auctionRepository: AuctionRepository,
     private val userRepository: UserRepository,
+    private val companyRepository: CompanyRepository,
     private val statusHistoryRepository: AuctionStatusHistoryRepository
 ) {
     @Transactional
     fun execute(request: CreateAuctionRequest, sellerId: UUID): Auction {
+        companyRepository.findByUserId(sellerId).orElseThrow {
+            InvalidStateException(
+                "Cadastre sua empresa no perfil antes de criar um leilão",
+                "COMPANY_REQUIRED"
+            )
+        }
+
         val seller = userRepository.findById(sellerId)
             .orElseThrow { NotFoundException("Usuário não encontrado") }
 
@@ -192,11 +201,12 @@ class ListAuctionsUseCase(
     private val auctionRepository: AuctionRepository
 ) {
     @Transactional(readOnly = true)
-    fun execute(status: AuctionStatus?, pageable: Pageable): Page<Auction> {
-        return if (status != null) {
-            auctionRepository.findByStatus(status, pageable)
-        } else {
-            auctionRepository.findAll(pageable)
+    fun execute(status: AuctionStatus?, sellerId: UUID?, pageable: Pageable): Page<Auction> {
+        return when {
+            sellerId != null && status != null -> auctionRepository.findBySellerIdAndStatus(sellerId, status, pageable)
+            sellerId != null -> auctionRepository.findBySellerId(sellerId, pageable)
+            status != null -> auctionRepository.findByStatus(status, pageable)
+            else -> auctionRepository.findAll(pageable)
         }
     }
 }

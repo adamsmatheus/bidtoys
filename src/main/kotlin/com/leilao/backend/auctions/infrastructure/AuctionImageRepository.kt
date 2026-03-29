@@ -8,4 +8,5 @@ import java.util.UUID
 @Repository
 interface AuctionImageRepository : JpaRepository<AuctionImage, UUID> {
     fun findByAuction_IdOrderByPositionAsc(auctionId: UUID): List<AuctionImage>
+    fun findByAuction_IdInOrderByPositionAsc(auctionIds: List<UUID>): List<AuctionImage>
 }

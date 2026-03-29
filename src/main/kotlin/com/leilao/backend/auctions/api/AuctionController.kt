@@ -16,6 +16,7 @@ import com.leilao.backend.auctions.application.UpdateAuctionUseCase
 import com.leilao.backend.auctions.application.UploadAuctionImageUseCase
 import com.leilao.backend.auctions.domain.AuctionStatus
 import com.leilao.backend.auctions.infrastructure.AuctionImageRepository
+import com.leilao.backend.companies.infrastructure.CompanyRepository
 import com.leilao.backend.shared.api.PageResponse
 import com.leilao.backend.shared.security.UserPrincipal
 import io.swagger.v3.oas.annotations.Operation
@@ -52,7 +53,8 @@ class AuctionController(
     private val listAuctionsUseCase: ListAuctionsUseCase,
     private val uploadAuctionImageUseCase: UploadAuctionImageUseCase,
     private val deleteAuctionImageUseCase: DeleteAuctionImageUseCase,
-    private val auctionImageRepository: AuctionImageRepository
+    private val auctionImageRepository: AuctionImageRepository,
+    private val companyRepository: CompanyRepository
 ) {
 
     @PostMapping
@@ -62,7 +64,9 @@ class AuctionController(
         @Valid @RequestBody request: CreateAuctionRequest,
         @AuthenticationPrincipal principal: UserPrincipal
     ): AuctionResponse {
-        return AuctionResponse.from(createAuctionUseCase.execute(request, principal.id))
+        val auction = createAuctionUseCase.execute(request, principal.id)
+        val company = companyRepository.findByUserId(principal.id).orElse(null)
+        return AuctionResponse.from(auction, company = company)
     }
 
     @PutMapping("/{id}")
@@ -108,19 +112,28 @@ class AuctionController(
     fun getById(@PathVariable id: UUID): AuctionResponse {
         val auction = getAuctionUseCase.execute(id)
         val images = auctionImageRepository.findByAuction_IdOrderByPositionAsc(auction.id)
-        return AuctionResponse.from(auction, images)
+        val company = companyRepository.findByUserId(auction.seller.id).orElse(null)
+        return AuctionResponse.from(auction, images, company)
     }
 
     @GetMapping
-    @Operation(summary = "Lista leilões com paginação e filtro de status")
+    @Operation(summary = "Lista leilões com paginação, filtro de status e vendedor")
     fun list(
         @RequestParam(required = false) status: AuctionStatus?,
+        @RequestParam(required = false) sellerId: UUID?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int
     ): PageResponse<AuctionResponse> {
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-        val result = listAuctionsUseCase.execute(status, pageable)
-        return PageResponse.from(result.map { AuctionResponse.from(it) })
+        val result = listAuctionsUseCase.execute(status, sellerId, pageable)
+        val auctionIds = result.content.map { it.id }
+        val sellerIds = result.content.map { it.seller.id }.distinct()
+        val companyMap = companyRepository.findByUserIdIn(sellerIds).associateBy { it.user.id }
+        val imagesMap = auctionImageRepository.findByAuction_IdInOrderByPositionAsc(auctionIds)
+            .groupBy { it.auction.id }
+        return PageResponse.from(result.map {
+            AuctionResponse.from(it, images = imagesMap[it.id] ?: emptyList(), company = companyMap[it.seller.id])
+        })
     }
 
     @PostMapping("/{id}/images", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])

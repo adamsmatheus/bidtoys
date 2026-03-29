@@ -3,6 +3,7 @@ package com.leilao.backend.auctions.api.dto
 import com.leilao.backend.auctions.domain.Auction
 import com.leilao.backend.auctions.domain.AuctionImage
 import com.leilao.backend.auctions.domain.AuctionStatus
+import com.leilao.backend.companies.domain.Company
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
@@ -14,6 +15,12 @@ data class AuctionImageResponse(
     val id: UUID,
     val fileUrl: String,
     val position: Int
+)
+
+data class CompanyInfo(
+    val id: UUID,
+    val name: String,
+    val logoUrl: String?
 )
 
 data class CreateAuctionRequest(
@@ -73,10 +80,11 @@ data class AuctionResponse(
     val finishedAt: Instant?,
     val createdAt: Instant,
     val updatedAt: Instant,
-    val images: List<AuctionImageResponse> = emptyList()
+    val images: List<AuctionImageResponse> = emptyList(),
+    val company: CompanyInfo? = null
 ) {
     companion object {
-        fun from(auction: Auction, images: List<AuctionImage> = emptyList()) = AuctionResponse(
+        fun from(auction: Auction, images: List<AuctionImage> = emptyList(), company: Company? = null) = AuctionResponse(
             id = auction.id,
             sellerId = auction.seller.id,
             sellerName = auction.seller.name,
@@ -95,7 +103,8 @@ data class AuctionResponse(
             finishedAt = auction.finishedAt,
             createdAt = auction.createdAt,
             updatedAt = auction.updatedAt,
-            images = images.map { AuctionImageResponse(it.id, it.fileUrl, it.position) }
+            images = images.map { AuctionImageResponse(it.id, it.fileUrl, it.position) },
+            company = company?.let { CompanyInfo(it.id, it.name, it.logoUrl) }
         )
     }
 }
