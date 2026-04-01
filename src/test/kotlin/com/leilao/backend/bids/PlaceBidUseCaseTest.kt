@@ -46,6 +46,7 @@ class PlaceBidUseCaseTest {
             name = "Vendedor",
             email = "seller@test.com",
             passwordHash = "hash",
+            phoneNumber = "11999999999",
             role = UserRole.USER,
             status = UserStatus.ACTIVE
         )
@@ -54,6 +55,7 @@ class PlaceBidUseCaseTest {
             name = "Licitante",
             email = "bidder@test.com",
             passwordHash = "hash",
+            phoneNumber = "11988888888",
             role = UserRole.USER,
             status = UserStatus.ACTIVE
         )
@@ -89,7 +91,7 @@ class PlaceBidUseCaseTest {
 
         val result = useCase.execute(auctionId, request, bidderId)
 
-        assertEquals(110, result.amount)
+        assertEquals(110, result.bid.amount)
         verify { auctionRepository.save(activeAuction) }
     }
 
@@ -126,13 +128,15 @@ class PlaceBidUseCaseTest {
         val existingBid = mockk<Bid> {
             every { amount } returns 110
             every { bidderId } returns this@PlaceBidUseCaseTest.bidderId
+            every { auctionId } returns activeAuction.id
         }
 
         every { bidRepository.findByRequestId(requestId) } returns Optional.of(existingBid)
+        every { auctionRepository.findById(activeAuction.id) } returns Optional.of(activeAuction)
 
         val result = useCase.execute(activeAuction.id, PlaceBidRequest(110, requestId), bidderId)
 
-        assertEquals(existingBid, result)
+        assertEquals(existingBid, result.bid)
         verify(exactly = 0) { auctionRepository.findByIdWithLock(any()) }
     }
 }

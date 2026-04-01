@@ -196,17 +196,39 @@ class GetAuctionUseCase(
     }
 }
 
+private val PUBLIC_STATUSES = setOf(
+    AuctionStatus.READY_TO_START,
+    AuctionStatus.ACTIVE,
+    AuctionStatus.FINISHED_WITH_WINNER,
+    AuctionStatus.FINISHED_NO_BIDS
+)
+
 @Service
 class ListAuctionsUseCase(
     private val auctionRepository: AuctionRepository
 ) {
     @Transactional(readOnly = true)
-    fun execute(status: AuctionStatus?, sellerId: UUID?, pageable: Pageable): Page<Auction> {
+    fun execute(status: AuctionStatus?, sellerId: UUID?, requesterId: UUID?, pageable: Pageable): Page<Auction> {
+        val isOwner = requesterId != null && requesterId == sellerId
+
         return when {
-            sellerId != null && status != null -> auctionRepository.findBySellerIdAndStatus(sellerId, status, pageable)
-            sellerId != null -> auctionRepository.findBySellerId(sellerId, pageable)
-            status != null -> auctionRepository.findByStatus(status, pageable)
-            else -> auctionRepository.findAll(pageable)
+            // Dono vendo seus próprios leilões — todos os statuses permitidos
+            isOwner && status != null -> auctionRepository.findBySellerIdAndStatus(sellerId!!, status, pageable)
+            isOwner -> auctionRepository.findBySellerId(sellerId!!, pageable)
+
+            // Público vendo leilões de um vendedor — apenas statuses públicos
+            sellerId != null && status != null -> {
+                if (status in PUBLIC_STATUSES) auctionRepository.findBySellerIdAndStatus(sellerId, status, pageable)
+                else Page.empty(pageable)
+            }
+            sellerId != null -> auctionRepository.findBySellerIdAndStatusIn(sellerId, PUBLIC_STATUSES, pageable)
+
+            // Listagem geral — apenas statuses públicos
+            status != null -> {
+                if (status in PUBLIC_STATUSES) auctionRepository.findByStatus(status, pageable)
+                else Page.empty(pageable)
+            }
+            else -> auctionRepository.findByStatusIn(PUBLIC_STATUSES, pageable)
         }
     }
 }

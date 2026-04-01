@@ -18,6 +18,7 @@ class AuctionDomainTest {
         name = "Vendedor",
         email = "seller@test.com",
         passwordHash = "hash",
+        phoneNumber = "11999999999",
         role = UserRole.USER,
         status = UserStatus.ACTIVE
     )

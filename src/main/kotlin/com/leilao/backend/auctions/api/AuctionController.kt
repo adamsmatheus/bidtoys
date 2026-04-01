@@ -122,10 +122,11 @@ class AuctionController(
         @RequestParam(required = false) status: AuctionStatus?,
         @RequestParam(required = false) sellerId: UUID?,
         @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "20") size: Int
+        @RequestParam(defaultValue = "20") size: Int,
+        @AuthenticationPrincipal principal: UserPrincipal?
     ): PageResponse<AuctionResponse> {
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-        val result = listAuctionsUseCase.execute(status, sellerId, pageable)
+        val result = listAuctionsUseCase.execute(status, sellerId, principal?.id, pageable)
         val auctionIds = result.content.map { it.id }
         val sellerIds = result.content.map { it.seller.id }.distinct()
         val companyMap = companyRepository.findByUserIdIn(sellerIds).associateBy { it.user.id }
