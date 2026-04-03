@@ -6,9 +6,20 @@ import com.leilao.backend.auctions.domain.AuctionStatusHistory
 import com.leilao.backend.auctions.infrastructure.AuctionRepository
 import com.leilao.backend.auctions.infrastructure.AuctionStatusHistoryRepository
 import com.leilao.backend.shared.exception.NotFoundException
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
+
+@Service
+class ListPendingAuctionsUseCase(
+    private val auctionRepository: AuctionRepository
+) {
+    @Transactional(readOnly = true)
+    fun execute(pageable: Pageable): Page<Auction> =
+        auctionRepository.findByStatus(AuctionStatus.PENDING_APPROVAL, pageable)
+}
 
 @Service
 class ApproveAuctionUseCase(
