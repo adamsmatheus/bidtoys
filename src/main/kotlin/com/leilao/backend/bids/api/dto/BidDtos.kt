@@ -23,6 +23,7 @@ data class BidResponse(
     val id: UUID,
     val auctionId: UUID,
     val bidderId: UUID,
+    val bidderName: String,
     val amount: Int,
     val createdAt: Instant
 ) {
@@ -31,6 +32,7 @@ data class BidResponse(
             id = bid.id,
             auctionId = bid.auctionId,
             bidderId = bid.bidderId,
+            bidderName = bid.bidder.name,
             amount = bid.amount,
             createdAt = bid.createdAt
         )

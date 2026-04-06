@@ -20,11 +20,12 @@ class FakeWhatsAppGateway : WhatsAppGateway {
         val fakeMessageId = "fake-msg-${UUID.randomUUID()}"
 
         log.info(
-            "[FAKE WhatsApp] Enviando mensagem para {} | Leilão: {} | Vencedor: {} | Valor: R$ {} | msgId: {}",
+            "[FAKE WhatsApp] Enviando mensagem para {} | Leilão: {} | Vencedor: {} | Valor: R$ {} | PIX: {} | msgId: {}",
             phoneNumber,
             winnerMessage.auctionTitle,
             winnerMessage.recipientName,
             winnerMessage.winningAmount,
+            winnerMessage.sellerPixKey ?: "não informado",
             fakeMessageId
         )
 

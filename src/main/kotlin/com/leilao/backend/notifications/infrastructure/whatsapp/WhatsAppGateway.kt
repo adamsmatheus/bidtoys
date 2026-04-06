@@ -24,7 +24,8 @@ data class WinnerMessagePayload(
     val recipientName: String,
     val auctionTitle: String,
     val winningAmount: Int,
-    val auctionId: String
+    val auctionId: String,
+    val sellerPixKey: String?
 )
 
 class WhatsAppSendException(message: String, cause: Throwable? = null) :

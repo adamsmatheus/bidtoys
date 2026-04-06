@@ -43,12 +43,13 @@ class UpsertCompanyUseCase(
             existing.name = request.name
             existing.description = request.description
             existing.logoUrl = request.logoUrl
+            existing.pixKey = request.pixKey
             companyRepository.save(existing)
         } else {
             val user = userRepository.findById(userId)
                 .orElseThrow { NotFoundException("Usuário não encontrado") }
             companyRepository.save(
-                Company(user = user, name = request.name, description = request.description, logoUrl = request.logoUrl)
+                Company(user = user, name = request.name, description = request.description, logoUrl = request.logoUrl, pixKey = request.pixKey)
             )
         }
     }

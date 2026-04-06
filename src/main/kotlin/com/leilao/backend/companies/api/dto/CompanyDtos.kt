@@ -13,21 +13,25 @@ data class UpsertCompanyRequest(
 
     val description: String? = null,
 
-    val logoUrl: String? = null
+    val logoUrl: String? = null,
+
+    val pixKey: String? = null
 )
 
 data class CompanyResponse(
     val id: UUID,
     val name: String,
     val description: String?,
-    val logoUrl: String?
+    val logoUrl: String?,
+    val pixKey: String?
 ) {
     companion object {
         fun from(company: Company) = CompanyResponse(
             id = company.id,
             name = company.name,
             description = company.description,
-            logoUrl = company.logoUrl
+            logoUrl = company.logoUrl,
+            pixKey = company.pixKey
         )
     }
 }

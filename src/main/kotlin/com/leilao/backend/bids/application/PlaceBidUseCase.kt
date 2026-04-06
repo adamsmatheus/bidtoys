@@ -81,6 +81,15 @@ class PlaceBidUseCase(
             )
         }
 
+        val increment = auction.minIncrementAmount
+        if ((request.amount - auction.currentPriceAmount) % increment != 0) {
+            throw BusinessException(
+                "O lance deve ser um múltiplo de R$ $increment. Próximos valores válidos: R$ $minimumAccepted, R$ ${minimumAccepted + increment}...",
+                "BID_NOT_MULTIPLE_OF_INCREMENT",
+                HttpStatus.UNPROCESSABLE_ENTITY
+            )
+        }
+
         val bidder = userRepository.findById(bidderId)
             .orElseThrow { NotFoundException("Usuário não encontrado") }
 

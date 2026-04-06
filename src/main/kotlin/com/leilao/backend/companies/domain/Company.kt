@@ -24,6 +24,9 @@ class Company(
     var description: String? = null,
 
     @Column(name = "logo_url", length = 1024)
-    var logoUrl: String? = null
+    var logoUrl: String? = null,
+
+    @Column(name = "pix_key", length = 150)
+    var pixKey: String? = null
 
 ) : AuditableEntity()

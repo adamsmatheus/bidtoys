@@ -1,0 +1,1 @@
+ALTER TABLE companies ADD COLUMN pix_key VARCHAR(150);

@@ -11,6 +11,8 @@ import com.leilao.backend.notifications.infrastructure.NotificationRepository
 import com.leilao.backend.notifications.infrastructure.whatsapp.WhatsAppGateway
 import com.leilao.backend.notifications.infrastructure.whatsapp.WhatsAppSendException
 import com.leilao.backend.notifications.infrastructure.whatsapp.WinnerMessagePayload
+import com.leilao.backend.auctions.infrastructure.AuctionRepository
+import com.leilao.backend.companies.infrastructure.CompanyRepository
 import com.leilao.backend.users.infrastructure.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -29,6 +31,8 @@ class SendWinnerNotificationUseCase(
     private val notificationRepository: NotificationRepository,
     private val adminAlertRepository: AdminAlertRepository,
     private val userRepository: UserRepository,
+    private val auctionRepository: AuctionRepository,
+    private val companyRepository: CompanyRepository,
     private val whatsAppGateway: WhatsAppGateway,
     private val objectMapper: ObjectMapper
 ) {
@@ -64,12 +68,17 @@ class SendWinnerNotificationUseCase(
             return
         }
 
+        val sellerPixKey = auctionRepository.findById(command.auctionId)
+            .map { auction -> companyRepository.findByUserId(auction.seller.id).orElse(null)?.pixKey }
+            .orElse(null)
+
         try {
             val messagePayload = WinnerMessagePayload(
                 recipientName = winner.name,
                 auctionTitle = command.auctionTitle,
                 winningAmount = command.finalAmount,
-                auctionId = command.auctionId.toString()
+                auctionId = command.auctionId.toString(),
+                sellerPixKey = sellerPixKey
             )
 
             val providerMessageId = whatsAppGateway.sendWinnerMessage(winner.phoneNumber, messagePayload)
