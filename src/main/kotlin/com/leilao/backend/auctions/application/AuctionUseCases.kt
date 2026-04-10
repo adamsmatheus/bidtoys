@@ -198,10 +198,18 @@ class GetAuctionUseCase(
 
 private val PUBLIC_STATUSES = setOf(
     AuctionStatus.READY_TO_START,
-    AuctionStatus.ACTIVE,
-    AuctionStatus.FINISHED_WITH_WINNER,
-    AuctionStatus.FINISHED_NO_BIDS
+    AuctionStatus.ACTIVE
 )
+
+@Service
+class ListWonAuctionsUseCase(
+    private val auctionRepository: AuctionRepository
+) {
+    @Transactional(readOnly = true)
+    fun execute(userId: UUID, pageable: Pageable): Page<Auction> {
+        return auctionRepository.findByWinnerUserId(userId, pageable)
+    }
+}
 
 @Service
 class ListAuctionsUseCase(

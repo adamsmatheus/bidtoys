@@ -193,7 +193,9 @@ class Auction(
 
     fun isOwnedBy(userId: UUID) = seller.id == userId
 
-    fun nextMinimumBid(): Int = currentPriceAmount + minIncrementAmount
+    fun nextMinimumBid(): Int =
+        if (leadingBidId == null) currentPriceAmount
+        else currentPriceAmount + minIncrementAmount
 
     fun hasExpired(): Boolean {
         val ends = endsAt ?: return false

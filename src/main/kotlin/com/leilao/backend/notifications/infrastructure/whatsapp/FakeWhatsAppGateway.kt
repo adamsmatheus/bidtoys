@@ -42,4 +42,12 @@ class FakeWhatsAppGateway : WhatsAppGateway {
             code
         )
     }
+
+    override fun sendPasswordResetCode(phoneNumber: String, code: String) {
+        log.info(
+            "[FAKE WhatsApp] *** RESET DE SENHA *** Código para {}: {}",
+            phoneNumber,
+            code
+        )
+    }
 }

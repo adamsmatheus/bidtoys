@@ -1,11 +1,15 @@
 package com.leilao.backend.auth.api
 
+import com.leilao.backend.auth.api.dto.ForgotPasswordRequest
 import com.leilao.backend.auth.api.dto.LoginRequest
 import com.leilao.backend.auth.api.dto.LoginResponse
 import com.leilao.backend.auth.api.dto.RegisterRequest
+import com.leilao.backend.auth.api.dto.ResetPasswordRequest
 import com.leilao.backend.auth.api.dto.SendWhatsAppCodeRequest
+import com.leilao.backend.auth.application.ForgotPasswordUseCase
 import com.leilao.backend.auth.application.LoginUseCase
 import com.leilao.backend.auth.application.RegisterUseCase
+import com.leilao.backend.auth.application.ResetPasswordUseCase
 import com.leilao.backend.auth.application.SendWhatsAppCodeUseCase
 import com.leilao.backend.users.api.dto.UserResponse
 import io.swagger.v3.oas.annotations.Operation
@@ -24,7 +28,9 @@ import org.springframework.web.bind.annotation.RestController
 class AuthController(
     private val registerUseCase: RegisterUseCase,
     private val loginUseCase: LoginUseCase,
-    private val sendWhatsAppCodeUseCase: SendWhatsAppCodeUseCase
+    private val sendWhatsAppCodeUseCase: SendWhatsAppCodeUseCase,
+    private val forgotPasswordUseCase: ForgotPasswordUseCase,
+    private val resetPasswordUseCase: ResetPasswordUseCase
 ) {
 
     @PostMapping("/register")
@@ -46,5 +52,19 @@ class AuthController(
     @Operation(summary = "Envia código de verificação de 6 dígitos via WhatsApp")
     fun sendWhatsAppCode(@Valid @RequestBody request: SendWhatsAppCodeRequest) {
         sendWhatsAppCodeUseCase.execute(request.phoneNumber)
+    }
+
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Envia código de reset de senha via WhatsApp")
+    fun forgotPassword(@Valid @RequestBody request: ForgotPasswordRequest) {
+        forgotPasswordUseCase.execute(request.email)
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Redefine a senha usando o código recebido via WhatsApp")
+    fun resetPassword(@Valid @RequestBody request: ResetPasswordRequest) {
+        resetPasswordUseCase.execute(request.email, request.code, request.newPassword)
     }
 }

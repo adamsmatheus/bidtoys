@@ -69,3 +69,22 @@ data class LoginResponse(
     val token: String,
     val tokenType: String = "Bearer"
 )
+
+data class ForgotPasswordRequest(
+    @field:NotBlank(message = "E-mail é obrigatório")
+    @field:Email(message = "E-mail inválido")
+    val email: String
+)
+
+data class ResetPasswordRequest(
+    @field:NotBlank(message = "E-mail é obrigatório")
+    @field:Email(message = "E-mail inválido")
+    val email: String,
+
+    @field:NotBlank(message = "Código é obrigatório")
+    val code: String,
+
+    @field:NotBlank(message = "Nova senha é obrigatória")
+    @field:Size(min = 6, message = "Senha deve ter no mínimo 6 caracteres")
+    val newPassword: String
+)

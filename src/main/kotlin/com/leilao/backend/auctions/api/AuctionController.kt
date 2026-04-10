@@ -10,6 +10,7 @@ import com.leilao.backend.auctions.application.CreateAuctionUseCase
 import com.leilao.backend.auctions.application.DeleteAuctionImageUseCase
 import com.leilao.backend.auctions.application.GetAuctionUseCase
 import com.leilao.backend.auctions.application.ListAuctionsUseCase
+import com.leilao.backend.auctions.application.ListWonAuctionsUseCase
 import com.leilao.backend.auctions.application.StartAuctionUseCase
 import com.leilao.backend.auctions.application.SubmitForApprovalUseCase
 import com.leilao.backend.auctions.application.UpdateAuctionUseCase
@@ -51,6 +52,7 @@ class AuctionController(
     private val cancelAuctionUseCase: CancelAuctionUseCase,
     private val getAuctionUseCase: GetAuctionUseCase,
     private val listAuctionsUseCase: ListAuctionsUseCase,
+    private val listWonAuctionsUseCase: ListWonAuctionsUseCase,
     private val uploadAuctionImageUseCase: UploadAuctionImageUseCase,
     private val deleteAuctionImageUseCase: DeleteAuctionImageUseCase,
     private val auctionImageRepository: AuctionImageRepository,
@@ -114,6 +116,25 @@ class AuctionController(
         val images = auctionImageRepository.findByAuction_IdOrderByPositionAsc(auction.id)
         val company = companyRepository.findByUserId(auction.seller.id).orElse(null)
         return AuctionResponse.from(auction, images, company)
+    }
+
+    @GetMapping("/won")
+    @Operation(summary = "Lista os leilões arrematados pelo usuário autenticado")
+    fun listWon(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ): PageResponse<AuctionResponse> {
+        val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "finishedAt"))
+        val result = listWonAuctionsUseCase.execute(principal.id, pageable)
+        val auctionIds = result.content.map { it.id }
+        val sellerIds = result.content.map { it.seller.id }.distinct()
+        val companyMap = companyRepository.findByUserIdIn(sellerIds).associateBy { it.user.id }
+        val imagesMap = auctionImageRepository.findByAuction_IdInOrderByPositionAsc(auctionIds)
+            .groupBy { it.auction.id }
+        return PageResponse.from(result.map {
+            AuctionResponse.from(it, images = imagesMap[it.id] ?: emptyList(), company = companyMap[it.seller.id])
+        })
     }
 
     @GetMapping

@@ -38,4 +38,6 @@ interface AuctionRepository : JpaRepository<Auction, UUID> {
     fun findByStatusIn(statuses: Collection<AuctionStatus>, pageable: Pageable): Page<Auction>
 
     fun existsBySellerIdAndStatusNotIn(sellerId: UUID, statuses: Collection<AuctionStatus>): Boolean
+
+    fun findByWinnerUserId(winnerUserId: UUID, pageable: Pageable): Page<Auction>
 }

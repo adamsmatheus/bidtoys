@@ -18,6 +18,12 @@ interface WhatsAppGateway {
      * @throws WhatsAppSendException em caso de falha no envio
      */
     fun sendVerificationCode(phoneNumber: String, code: String)
+
+    /**
+     * Envia código de reset de senha via WhatsApp.
+     * @throws WhatsAppSendException em caso de falha no envio
+     */
+    fun sendPasswordResetCode(phoneNumber: String, code: String)
 }
 
 data class WinnerMessagePayload(
