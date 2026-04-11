@@ -81,10 +81,16 @@ data class AuctionResponse(
     val createdAt: Instant,
     val updatedAt: Instant,
     val images: List<AuctionImageResponse> = emptyList(),
-    val company: CompanyInfo? = null
+    val company: CompanyInfo? = null,
+    val bidCount: Long = 0
 ) {
     companion object {
-        fun from(auction: Auction, images: List<AuctionImage> = emptyList(), company: Company? = null) = AuctionResponse(
+        fun from(
+            auction: Auction,
+            images: List<AuctionImage> = emptyList(),
+            company: Company? = null,
+            bidCount: Long = 0
+        ) = AuctionResponse(
             id = auction.id,
             sellerId = auction.seller.id,
             sellerName = auction.seller.name,
@@ -104,7 +110,8 @@ data class AuctionResponse(
             createdAt = auction.createdAt,
             updatedAt = auction.updatedAt,
             images = images.map { AuctionImageResponse(it.id, it.fileUrl, it.position) },
-            company = company?.let { CompanyInfo(it.id, it.name, it.logoUrl) }
+            company = company?.let { CompanyInfo(it.id, it.name, it.logoUrl) },
+            bidCount = bidCount
         )
     }
 }

@@ -17,6 +17,7 @@ import com.leilao.backend.auctions.application.UpdateAuctionUseCase
 import com.leilao.backend.auctions.application.UploadAuctionImageUseCase
 import com.leilao.backend.auctions.domain.AuctionStatus
 import com.leilao.backend.auctions.infrastructure.AuctionImageRepository
+import com.leilao.backend.bids.infrastructure.BidRepository
 import com.leilao.backend.companies.infrastructure.CompanyRepository
 import com.leilao.backend.shared.api.PageResponse
 import com.leilao.backend.shared.security.UserPrincipal
@@ -56,6 +57,7 @@ class AuctionController(
     private val uploadAuctionImageUseCase: UploadAuctionImageUseCase,
     private val deleteAuctionImageUseCase: DeleteAuctionImageUseCase,
     private val auctionImageRepository: AuctionImageRepository,
+    private val bidRepository: BidRepository,
     private val companyRepository: CompanyRepository
 ) {
 
@@ -118,6 +120,9 @@ class AuctionController(
         return AuctionResponse.from(auction, images, company)
     }
 
+    private fun bidCountMap(auctionIds: List<UUID>): Map<UUID, Long> =
+        auctionIds.associateWith { bidRepository.countByAuction_Id(it) }
+
     @GetMapping("/won")
     @Operation(summary = "Lista os leilões arrematados pelo usuário autenticado")
     fun listWon(
@@ -132,8 +137,9 @@ class AuctionController(
         val companyMap = companyRepository.findByUserIdIn(sellerIds).associateBy { it.user.id }
         val imagesMap = auctionImageRepository.findByAuction_IdInOrderByPositionAsc(auctionIds)
             .groupBy { it.auction.id }
+        val bidCounts = bidCountMap(auctionIds)
         return PageResponse.from(result.map {
-            AuctionResponse.from(it, images = imagesMap[it.id] ?: emptyList(), company = companyMap[it.seller.id])
+            AuctionResponse.from(it, images = imagesMap[it.id] ?: emptyList(), company = companyMap[it.seller.id], bidCount = bidCounts[it.id] ?: 0)
         })
     }
 
@@ -153,8 +159,9 @@ class AuctionController(
         val companyMap = companyRepository.findByUserIdIn(sellerIds).associateBy { it.user.id }
         val imagesMap = auctionImageRepository.findByAuction_IdInOrderByPositionAsc(auctionIds)
             .groupBy { it.auction.id }
+        val bidCounts = bidCountMap(auctionIds)
         return PageResponse.from(result.map {
-            AuctionResponse.from(it, images = imagesMap[it.id] ?: emptyList(), company = companyMap[it.seller.id])
+            AuctionResponse.from(it, images = imagesMap[it.id] ?: emptyList(), company = companyMap[it.seller.id], bidCount = bidCounts[it.id] ?: 0)
         })
     }
 
