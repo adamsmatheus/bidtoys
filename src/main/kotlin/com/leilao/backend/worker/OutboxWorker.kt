@@ -2,6 +2,10 @@ package com.leilao.backend.worker
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.leilao.backend.auctions.infrastructure.AuctionRepository
+import com.leilao.backend.notifications.application.PaymentConfirmedNotificationCommand
+import com.leilao.backend.notifications.application.PaymentDeclaredNotificationCommand
+import com.leilao.backend.notifications.application.SendPaymentConfirmedNotificationUseCase
+import com.leilao.backend.notifications.application.SendPaymentDeclaredNotificationUseCase
 import com.leilao.backend.notifications.application.SendWinnerNotificationUseCase
 import com.leilao.backend.notifications.application.WinnerNotificationCommand
 import com.leilao.backend.worker.outbox.OutboxEvent
@@ -30,6 +34,8 @@ import java.util.UUID
 class OutboxWorker(
     private val outboxEventRepository: OutboxEventRepository,
     private val sendWinnerNotificationUseCase: SendWinnerNotificationUseCase,
+    private val sendPaymentDeclaredNotificationUseCase: SendPaymentDeclaredNotificationUseCase,
+    private val sendPaymentConfirmedNotificationUseCase: SendPaymentConfirmedNotificationUseCase,
     private val auctionRepository: AuctionRepository,
     private val objectMapper: ObjectMapper
 ) {
@@ -58,6 +64,8 @@ class OutboxWorker(
         try {
             when (event.eventType) {
                 "AUCTION_FINISHED_WITH_WINNER" -> handleAuctionFinishedWithWinner(event)
+                "PAYMENT_DECLARED" -> handlePaymentDeclared(event)
+                "PAYMENT_CONFIRMED" -> handlePaymentConfirmed(event)
                 else -> log.warn("OutboxWorker: tipo de evento desconhecido: {}", event.eventType)
             }
 
@@ -70,6 +78,34 @@ class OutboxWorker(
             event.markFailed(ex.message ?: "Erro desconhecido")
             outboxEventRepository.save(event)
         }
+    }
+
+    private fun handlePaymentDeclared(event: OutboxEvent) {
+        val payload = objectMapper.readValue(event.payloadJson, Map::class.java)
+
+        sendPaymentDeclaredNotificationUseCase.execute(
+            PaymentDeclaredNotificationCommand(
+                auctionId = UUID.fromString(payload["auctionId"] as String),
+                sellerId = UUID.fromString(payload["sellerId"] as String),
+                winnerUserId = UUID.fromString(payload["winnerUserId"] as String),
+                auctionTitle = payload["auctionTitle"] as String,
+                amount = payload["amount"] as Int
+            )
+        )
+    }
+
+    private fun handlePaymentConfirmed(event: OutboxEvent) {
+        val payload = objectMapper.readValue(event.payloadJson, Map::class.java)
+
+        sendPaymentConfirmedNotificationUseCase.execute(
+            PaymentConfirmedNotificationCommand(
+                auctionId = UUID.fromString(payload["auctionId"] as String),
+                winnerUserId = UUID.fromString(payload["winnerUserId"] as String),
+                sellerId = UUID.fromString(payload["sellerId"] as String),
+                auctionTitle = payload["auctionTitle"] as String,
+                amount = payload["amount"] as Int
+            )
+        )
     }
 
     private fun handleAuctionFinishedWithWinner(event: OutboxEvent) {

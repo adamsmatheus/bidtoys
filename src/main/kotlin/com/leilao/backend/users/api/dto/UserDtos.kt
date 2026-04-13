@@ -5,6 +5,7 @@ import com.leilao.backend.users.domain.UserAddress
 import com.leilao.backend.users.domain.UserRole
 import com.leilao.backend.users.domain.UserStatus
 import jakarta.validation.constraints.NotBlank
+// UserRole mantido para UserResponse.role
 import java.time.Instant
 import java.util.UUID
 
@@ -12,7 +13,6 @@ data class UpdateUserRequest(
     @field:NotBlank val name: String? = null,
     val phoneNumber: String? = null,
     val whatsappEnabled: Boolean? = null,
-    val role: UserRole? = null,
     val status: UserStatus? = null
 )
 

@@ -33,17 +33,19 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/whatsapp/send-code").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/auctions").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/auctions/{id}").permitAll()
                     // WebSocket
                     .requestMatchers("/ws/**").permitAll()
-                    // Swagger / OpenAPI
+                    // Swagger / OpenAPI — apenas em desenvolvimento
                     .requestMatchers(
                         "/swagger-ui.html",
                         "/swagger-ui/**",
                         "/api-docs",
                         "/api-docs/**"
-                    ).permitAll()
+                    ).hasRole("ADMIN")
                     // Static files (uploaded images)
                     .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
                     // Actuator

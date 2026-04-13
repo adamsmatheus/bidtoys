@@ -6,7 +6,9 @@ import com.leilao.backend.auctions.api.dto.CancelAuctionRequest
 import com.leilao.backend.auctions.api.dto.CreateAuctionRequest
 import com.leilao.backend.auctions.api.dto.UpdateAuctionRequest
 import com.leilao.backend.auctions.application.CancelAuctionUseCase
+import com.leilao.backend.auctions.application.ConfirmPaymentUseCase
 import com.leilao.backend.auctions.application.CreateAuctionUseCase
+import com.leilao.backend.auctions.application.DeclarePaymentUseCase
 import com.leilao.backend.auctions.application.DeleteAuctionImageUseCase
 import com.leilao.backend.auctions.application.GetAuctionUseCase
 import com.leilao.backend.auctions.application.ListAuctionsUseCase
@@ -51,6 +53,8 @@ class AuctionController(
     private val submitForApprovalUseCase: SubmitForApprovalUseCase,
     private val startAuctionUseCase: StartAuctionUseCase,
     private val cancelAuctionUseCase: CancelAuctionUseCase,
+    private val declarePaymentUseCase: DeclarePaymentUseCase,
+    private val confirmPaymentUseCase: ConfirmPaymentUseCase,
     private val getAuctionUseCase: GetAuctionUseCase,
     private val listAuctionsUseCase: ListAuctionsUseCase,
     private val listWonAuctionsUseCase: ListWonAuctionsUseCase,
@@ -99,6 +103,42 @@ class AuctionController(
         @AuthenticationPrincipal principal: UserPrincipal
     ): AuctionResponse {
         return AuctionResponse.from(startAuctionUseCase.execute(id, principal.id))
+    }
+
+    @PostMapping("/{id}/declare-payment")
+    @Operation(summary = "Vencedor declara que realizou o pagamento via PIX")
+    fun declarePayment(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ): AuctionResponse {
+        declarePaymentUseCase.execute(id, principal.id)
+        val auction = getAuctionUseCase.execute(id)
+        val company = companyRepository.findByUserId(auction.seller.id).orElse(null)
+        return AuctionResponse.from(auction, company = company)
+    }
+
+    @PostMapping("/{id}/confirm-payment")
+    @Operation(summary = "Vendedor confirma o recebimento do pagamento")
+    fun confirmPayment(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ): AuctionResponse {
+        confirmPaymentUseCase.execute(id, principal.id, confirmed = true)
+        val auction = getAuctionUseCase.execute(id)
+        val company = companyRepository.findByUserId(auction.seller.id).orElse(null)
+        return AuctionResponse.from(auction, company = company)
+    }
+
+    @PostMapping("/{id}/dispute-payment")
+    @Operation(summary = "Vendedor contesta o pagamento declarado pelo vencedor")
+    fun disputePayment(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ): AuctionResponse {
+        confirmPaymentUseCase.execute(id, principal.id, confirmed = false)
+        val auction = getAuctionUseCase.execute(id)
+        val company = companyRepository.findByUserId(auction.seller.id).orElse(null)
+        return AuctionResponse.from(auction, company = company)
     }
 
     @PostMapping("/{id}/cancel")

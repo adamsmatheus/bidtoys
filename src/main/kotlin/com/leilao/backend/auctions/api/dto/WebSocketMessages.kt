@@ -4,6 +4,14 @@ import com.leilao.backend.auctions.domain.AuctionStatus
 import java.time.Instant
 import java.util.UUID
 
+data class UserNotificationMessage(
+    val type: String,
+    val title: String,
+    val message: String,
+    val auctionId: String,
+    val createdAt: Instant = Instant.now()
+)
+
 data class NewBidMessage(
     val type: String = "NEW_BID",
     val bidId: UUID,

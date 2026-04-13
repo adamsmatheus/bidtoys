@@ -1,5 +1,7 @@
 package com.leilao.backend.notifications.infrastructure.whatsapp
 
+import com.leilao.backend.notifications.infrastructure.whatsapp.PaymentConfirmedMessagePayload
+import com.leilao.backend.notifications.infrastructure.whatsapp.PaymentDeclaredMessagePayload
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Component
@@ -49,5 +51,29 @@ class FakeWhatsAppGateway : WhatsAppGateway {
             phoneNumber,
             code
         )
+    }
+
+    override fun sendPaymentDeclaredMessage(phoneNumber: String, payload: PaymentDeclaredMessagePayload): String {
+        val fakeMessageId = "fake-msg-${UUID.randomUUID()}"
+        log.info(
+            "[FAKE WhatsApp] Pagamento declarado para vendedor {} | Leilão: {} | Valor: R$ {} | msgId: {}",
+            phoneNumber,
+            payload.auctionTitle,
+            payload.amount,
+            fakeMessageId
+        )
+        return fakeMessageId
+    }
+
+    override fun sendPaymentConfirmedMessage(phoneNumber: String, payload: PaymentConfirmedMessagePayload): String {
+        val fakeMessageId = "fake-msg-${UUID.randomUUID()}"
+        log.info(
+            "[FAKE WhatsApp] Pagamento confirmado para vencedor {} | Leilão: {} | Valor: R$ {} | msgId: {}",
+            phoneNumber,
+            payload.auctionTitle,
+            payload.amount,
+            fakeMessageId
+        )
+        return fakeMessageId
     }
 }

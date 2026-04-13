@@ -10,6 +10,7 @@ import com.leilao.backend.worker.outbox.OutboxEventRepository
 import com.leilao.backend.worker.outbox.OutboxEvent
 import com.leilao.backend.worker.outbox.OutboxEventStatus
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.leilao.backend.notifications.application.UserNotificationBroadcastService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -22,7 +23,8 @@ class FinishAuctionUseCase(
     private val outboxEventRepository: OutboxEventRepository,
     private val statusHistoryRepository: AuctionStatusHistoryRepository,
     private val objectMapper: ObjectMapper,
-    private val auctionBroadcastService: AuctionBroadcastService
+    private val auctionBroadcastService: AuctionBroadcastService,
+    private val userNotificationBroadcastService: UserNotificationBroadcastService
 ) {
 
     private val log = LoggerFactory.getLogger(FinishAuctionUseCase::class.java)
@@ -57,6 +59,12 @@ class FinishAuctionUseCase(
             saveStatusHistory(auction, fromStatus, AuctionStatus.FINISHED_WITH_WINNER, null)
 
             publishOutboxEvent(auction)
+            userNotificationBroadcastService.notifyAuctionWon(
+                userId = winnerBid.bidderId,
+                auctionId = auction.id,
+                auctionTitle = auction.title,
+                finalAmount = auction.currentPriceAmount
+            )
             log.info("Leilão {} encerrado com vencedor {}", auctionId, winnerBid.bidderId)
         }
 

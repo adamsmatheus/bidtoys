@@ -24,6 +24,18 @@ interface WhatsAppGateway {
      * @throws WhatsAppSendException em caso de falha no envio
      */
     fun sendPasswordResetCode(phoneNumber: String, code: String)
+
+    /**
+     * Notifica o vendedor que o vencedor declarou ter realizado o pagamento.
+     * @throws WhatsAppSendException em caso de falha no envio
+     */
+    fun sendPaymentDeclaredMessage(phoneNumber: String, payload: PaymentDeclaredMessagePayload): String
+
+    /**
+     * Notifica o vencedor que o vendedor confirmou o recebimento do pagamento.
+     * @throws WhatsAppSendException em caso de falha no envio
+     */
+    fun sendPaymentConfirmedMessage(phoneNumber: String, payload: PaymentConfirmedMessagePayload): String
 }
 
 data class WinnerMessagePayload(
@@ -32,6 +44,20 @@ data class WinnerMessagePayload(
     val winningAmount: Int,
     val auctionId: String,
     val sellerPixKey: String?
+)
+
+data class PaymentDeclaredMessagePayload(
+    val sellerName: String,
+    val auctionTitle: String,
+    val amount: Int,
+    val auctionId: String
+)
+
+data class PaymentConfirmedMessagePayload(
+    val winnerName: String,
+    val auctionTitle: String,
+    val amount: Int,
+    val auctionId: String
 )
 
 class WhatsAppSendException(message: String, cause: Throwable? = null) :

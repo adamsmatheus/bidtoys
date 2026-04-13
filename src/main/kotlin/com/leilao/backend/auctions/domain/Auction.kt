@@ -182,6 +182,30 @@ class Auction(
         this.finishedAt = Instant.now()
     }
 
+    fun declarePayment(winnerId: UUID) {
+        check(status == AuctionStatus.FINISHED_WITH_WINNER) {
+            "Pagamento só pode ser declarado em leilões com vencedor"
+        }
+        check(winnerUserId == winnerId) { "Somente o vencedor pode declarar o pagamento" }
+        status = AuctionStatus.PAYMENT_DECLARED
+    }
+
+    fun confirmPayment(sellerId: UUID) {
+        check(status == AuctionStatus.PAYMENT_DECLARED) {
+            "Pagamento só pode ser confirmado após ser declarado pelo vencedor"
+        }
+        check(seller.id == sellerId) { "Somente o vendedor pode confirmar o pagamento" }
+        status = AuctionStatus.PAYMENT_CONFIRMED
+    }
+
+    fun disputePayment(sellerId: UUID) {
+        check(status == AuctionStatus.PAYMENT_DECLARED) {
+            "Pagamento só pode ser contestado após ser declarado pelo vencedor"
+        }
+        check(seller.id == sellerId) { "Somente o vendedor pode contestar o pagamento" }
+        status = AuctionStatus.PAYMENT_DISPUTED
+    }
+
     /**
      * Atualiza o preço inicial (somente antes de receber lances — DRAFT/REJECTED).
      * Reseta também o currentPriceAmount pois ainda não há lances.

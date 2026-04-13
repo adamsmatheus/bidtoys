@@ -12,7 +12,9 @@ enum class NotificationType {
     WINNER_NOTIFICATION,
     AUCTION_STARTING_SOON,
     AUCTION_OUTBID,
-    ADMIN_ALERT
+    ADMIN_ALERT,
+    PAYMENT_DECLARED,
+    PAYMENT_CONFIRMED
 }
 
 enum class NotificationChannel {

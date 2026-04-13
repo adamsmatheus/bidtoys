@@ -23,7 +23,6 @@ class UpdateUserUseCase(
         request.name?.let { user.name = it }
         request.phoneNumber?.let { user.phoneNumber = it }
         request.whatsappEnabled?.let { user.whatsappEnabled = it }
-        request.role?.let { user.role = it }
         request.status?.let {
             when (it) {
                 UserStatus.ACTIVE -> user.activate()
