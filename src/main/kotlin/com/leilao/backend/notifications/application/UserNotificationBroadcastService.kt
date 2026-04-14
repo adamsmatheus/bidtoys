@@ -1,6 +1,8 @@
 package com.leilao.backend.notifications.application
 
 import com.leilao.backend.auctions.api.dto.UserNotificationMessage
+import com.leilao.backend.notifications.domain.InAppNotification
+import com.leilao.backend.notifications.infrastructure.InAppNotificationRepository
 import org.slf4j.LoggerFactory
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
@@ -8,14 +10,16 @@ import java.util.UUID
 
 @Service
 class UserNotificationBroadcastService(
-    private val messagingTemplate: SimpMessagingTemplate
+    private val messagingTemplate: SimpMessagingTemplate,
+    private val inAppNotificationRepository: InAppNotificationRepository
 ) {
 
     private val log = LoggerFactory.getLogger(UserNotificationBroadcastService::class.java)
 
     fun notifyAuctionWon(userId: UUID, auctionId: UUID, auctionTitle: String, finalAmount: Int) {
         send(
-            userId,
+            userId = userId,
+            auctionId = auctionId,
             UserNotificationMessage(
                 type = "AUCTION_WON",
                 title = "Você arrematou!",
@@ -27,7 +31,8 @@ class UserNotificationBroadcastService(
 
     fun notifyPaymentDeclared(sellerId: UUID, auctionId: UUID, auctionTitle: String, amount: Int) {
         send(
-            sellerId,
+            userId = sellerId,
+            auctionId = auctionId,
             UserNotificationMessage(
                 type = "PAYMENT_DECLARED",
                 title = "Pagamento declarado",
@@ -39,7 +44,8 @@ class UserNotificationBroadcastService(
 
     fun notifyPaymentConfirmed(winnerId: UUID, auctionId: UUID, auctionTitle: String) {
         send(
-            winnerId,
+            userId = winnerId,
+            auctionId = auctionId,
             UserNotificationMessage(
                 type = "PAYMENT_CONFIRMED",
                 title = "Pagamento confirmado",
@@ -51,7 +57,8 @@ class UserNotificationBroadcastService(
 
     fun notifyPaymentDisputed(winnerId: UUID, auctionId: UUID, auctionTitle: String) {
         send(
-            winnerId,
+            userId = winnerId,
+            auctionId = auctionId,
             UserNotificationMessage(
                 type = "PAYMENT_DISPUTED",
                 title = "Pagamento contestado",
@@ -61,10 +68,21 @@ class UserNotificationBroadcastService(
         )
     }
 
-    private fun send(userId: UUID, message: UserNotificationMessage) {
+    private fun send(userId: UUID, auctionId: UUID, message: UserNotificationMessage) {
+        val saved = inAppNotificationRepository.save(
+            InAppNotification(
+                userId = userId,
+                type = message.type,
+                title = message.title,
+                message = message.message,
+                auctionId = auctionId
+            )
+        )
+
+        val messageWithId = message.copy(id = saved.id.toString(), createdAt = saved.createdAt)
         val destination = "/topic/users/$userId/notifications"
-        messagingTemplate.convertAndSend(destination, message)
-        log.debug("Notificação [{}] enviada para usuário {}", message.type, userId)
+        messagingTemplate.convertAndSend(destination, messageWithId)
+        log.debug("Notificação [{}] persistida e enviada para usuário {}", message.type, userId)
     }
 
     private fun formatAmount(cents: Int): String =

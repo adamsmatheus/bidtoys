@@ -1,0 +1,10 @@
+ALTER TABLE auctions DROP CONSTRAINT chk_auctions_status;
+
+ALTER TABLE auctions ADD CONSTRAINT chk_auctions_status CHECK (
+    status IN (
+        'DRAFT', 'PENDING_APPROVAL', 'REJECTED',
+        'READY_TO_START', 'CANCELLED',
+        'ACTIVE', 'FINISHED_WITH_WINNER', 'FINISHED_NO_BIDS',
+        'PAYMENT_DECLARED', 'PAYMENT_CONFIRMED', 'PAYMENT_DISPUTED'
+    )
+);

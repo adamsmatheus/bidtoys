@@ -46,6 +46,13 @@ class UpsertCompanyUseCase(
             existing.pixKey = request.pixKey
             companyRepository.save(existing)
         } else {
+            if (request.pixKey.isNullOrBlank()) {
+                throw BusinessException(
+                    "Chave PIX é obrigatória para o cadastro da empresa",
+                    "PIX_KEY_REQUIRED",
+                    HttpStatus.UNPROCESSABLE_ENTITY
+                )
+            }
             val user = userRepository.findById(userId)
                 .orElseThrow { NotFoundException("Usuário não encontrado") }
             companyRepository.save(

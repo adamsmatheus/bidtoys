@@ -20,7 +20,8 @@ data class AuctionImageResponse(
 data class CompanyInfo(
     val id: UUID,
     val name: String,
-    val logoUrl: String?
+    val logoUrl: String?,
+    val pixKey: String? = null
 )
 
 data class CreateAuctionRequest(
@@ -110,7 +111,7 @@ data class AuctionResponse(
             createdAt = auction.createdAt,
             updatedAt = auction.updatedAt,
             images = images.map { AuctionImageResponse(it.id, it.fileUrl, it.position) },
-            company = company?.let { CompanyInfo(it.id, it.name, it.logoUrl) },
+            company = company?.let { CompanyInfo(it.id, it.name, it.logoUrl, it.pixKey) },
             bidCount = bidCount
         )
     }

@@ -9,6 +9,7 @@ data class UserNotificationMessage(
     val title: String,
     val message: String,
     val auctionId: String,
+    val id: String? = null,
     val createdAt: Instant = Instant.now()
 )
 
