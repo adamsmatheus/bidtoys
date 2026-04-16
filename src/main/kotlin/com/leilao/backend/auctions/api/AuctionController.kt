@@ -197,12 +197,13 @@ class AuctionController(
     @GetMapping("/won")
     @Operation(summary = "Lista os leilões arrematados pelo usuário autenticado")
     fun listWon(
+        @RequestParam(required = false) status: AuctionStatus?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
         @AuthenticationPrincipal principal: UserPrincipal
     ): PageResponse<AuctionResponse> {
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "finishedAt"))
-        val result = listWonAuctionsUseCase.execute(principal.id, pageable)
+        val result = listWonAuctionsUseCase.execute(principal.id, pageable, status)
         val auctionIds = result.content.map { it.id }
         val sellerIds = result.content.map { it.seller.id }.distinct()
         val companyMap = companyRepository.findByUserIdIn(sellerIds).associateBy { it.user.id }
