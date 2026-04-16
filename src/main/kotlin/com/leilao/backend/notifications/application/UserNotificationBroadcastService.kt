@@ -1,6 +1,7 @@
 package com.leilao.backend.notifications.application
 
 import com.leilao.backend.auctions.api.dto.UserNotificationMessage
+import com.leilao.backend.auctions.domain.ShipmentStatus
 import com.leilao.backend.notifications.domain.InAppNotification
 import com.leilao.backend.notifications.infrastructure.InAppNotificationRepository
 import org.slf4j.LoggerFactory
@@ -63,6 +64,36 @@ class UserNotificationBroadcastService(
                 type = "PAYMENT_DISPUTED",
                 title = "Pagamento contestado",
                 message = "O vendedor não identificou seu pagamento no leilão \"$auctionTitle\". Entre em contato com o suporte.",
+                auctionId = auctionId.toString()
+            )
+        )
+    }
+
+    fun notifyShipmentStatusChanged(
+        winnerId: UUID,
+        auctionId: UUID,
+        auctionTitle: String,
+        newStatus: ShipmentStatus,
+        trackingCode: String?
+    ) {
+        val (title, message) = when (newStatus) {
+            ShipmentStatus.PREPARING ->
+                "Produto em preparação" to
+                    "O vendedor está preparando o envio do seu produto do leilão \"$auctionTitle\"."
+            ShipmentStatus.SHIPPED -> {
+                val tracking = if (trackingCode != null) " Código de rastreio: $trackingCode." else ""
+                "Produto enviado" to
+                    "O seu produto do leilão \"$auctionTitle\" foi enviado.$tracking"
+            }
+            else -> return
+        }
+        send(
+            userId = winnerId,
+            auctionId = auctionId,
+            UserNotificationMessage(
+                type = "SHIPMENT_STATUS_CHANGED",
+                title = title,
+                message = message,
                 auctionId = auctionId.toString()
             )
         )

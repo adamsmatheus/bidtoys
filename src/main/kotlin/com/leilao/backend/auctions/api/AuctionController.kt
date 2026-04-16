@@ -2,9 +2,12 @@ package com.leilao.backend.auctions.api
 
 import com.leilao.backend.auctions.api.dto.AuctionImageResponse
 import com.leilao.backend.auctions.api.dto.AuctionResponse
+import com.leilao.backend.auctions.api.dto.BuyerSummaryResponse
 import com.leilao.backend.auctions.api.dto.CancelAuctionRequest
 import com.leilao.backend.auctions.api.dto.CreateAuctionRequest
+import com.leilao.backend.auctions.api.dto.DeclarePaymentRequest
 import com.leilao.backend.auctions.api.dto.UpdateAuctionRequest
+import com.leilao.backend.auctions.api.dto.UpdateShipmentStatusRequest
 import com.leilao.backend.auctions.application.CancelAuctionUseCase
 import com.leilao.backend.auctions.application.ConfirmPaymentUseCase
 import com.leilao.backend.auctions.application.CreateAuctionUseCase
@@ -12,12 +15,15 @@ import com.leilao.backend.auctions.application.DeclarePaymentUseCase
 import com.leilao.backend.auctions.application.DeleteAuctionImageUseCase
 import com.leilao.backend.auctions.application.GetAuctionUseCase
 import com.leilao.backend.auctions.application.ListAuctionsUseCase
+import com.leilao.backend.auctions.application.ListBuyersUseCase
 import com.leilao.backend.auctions.application.ListWonAuctionsUseCase
 import com.leilao.backend.auctions.application.StartAuctionUseCase
 import com.leilao.backend.auctions.application.SubmitForApprovalUseCase
 import com.leilao.backend.auctions.application.UpdateAuctionUseCase
+import com.leilao.backend.auctions.application.UpdateShipmentStatusUseCase
 import com.leilao.backend.auctions.application.UploadAuctionImageUseCase
 import com.leilao.backend.auctions.domain.AuctionStatus
+import com.leilao.backend.auctions.domain.ShipmentStatus
 import com.leilao.backend.auctions.infrastructure.AuctionImageRepository
 import com.leilao.backend.bids.infrastructure.BidRepository
 import com.leilao.backend.companies.infrastructure.CompanyRepository
@@ -33,6 +39,7 @@ import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -55,9 +62,11 @@ class AuctionController(
     private val cancelAuctionUseCase: CancelAuctionUseCase,
     private val declarePaymentUseCase: DeclarePaymentUseCase,
     private val confirmPaymentUseCase: ConfirmPaymentUseCase,
+    private val updateShipmentStatusUseCase: UpdateShipmentStatusUseCase,
     private val getAuctionUseCase: GetAuctionUseCase,
     private val listAuctionsUseCase: ListAuctionsUseCase,
     private val listWonAuctionsUseCase: ListWonAuctionsUseCase,
+    private val listBuyersUseCase: ListBuyersUseCase,
     private val uploadAuctionImageUseCase: UploadAuctionImageUseCase,
     private val deleteAuctionImageUseCase: DeleteAuctionImageUseCase,
     private val auctionImageRepository: AuctionImageRepository,
@@ -109,9 +118,10 @@ class AuctionController(
     @Operation(summary = "Vencedor declara que realizou o pagamento via PIX")
     fun declarePayment(
         @PathVariable id: UUID,
+        @RequestBody(required = false) request: DeclarePaymentRequest?,
         @AuthenticationPrincipal principal: UserPrincipal
     ): AuctionResponse {
-        declarePaymentUseCase.execute(id, principal.id)
+        declarePaymentUseCase.execute(id, principal.id, request?.holdShipment ?: false)
         val auction = getAuctionUseCase.execute(id)
         val company = companyRepository.findByUserId(auction.seller.id).orElse(null)
         return AuctionResponse.from(auction, company = company)
@@ -141,6 +151,19 @@ class AuctionController(
         return AuctionResponse.from(auction, company = company)
     }
 
+    @PatchMapping("/{id}/shipment-status")
+    @Operation(summary = "Vendedor atualiza o status de envio do produto")
+    fun updateShipmentStatus(
+        @PathVariable id: UUID,
+        @RequestBody request: UpdateShipmentStatusRequest,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ): AuctionResponse {
+        updateShipmentStatusUseCase.execute(id, principal.id, request.shipmentStatus, request.trackingCode)
+        val auction = getAuctionUseCase.execute(id)
+        val company = companyRepository.findByUserId(auction.seller.id).orElse(null)
+        return AuctionResponse.from(auction, company = company)
+    }
+
     @PostMapping("/{id}/cancel")
     @Operation(summary = "Cancela o leilão (antes de iniciar)")
     fun cancel(
@@ -162,6 +185,14 @@ class AuctionController(
 
     private fun bidCountMap(auctionIds: List<UUID>): Map<UUID, Long> =
         auctionIds.associateWith { bidRepository.countByAuction_Id(it) }
+
+    @GetMapping("/my-buyers")
+    @Operation(summary = "Lista os compradores agrupados por leilões vendidos pelo usuário autenticado")
+    fun listMyBuyers(
+        @AuthenticationPrincipal principal: UserPrincipal
+    ): List<BuyerSummaryResponse> {
+        return listBuyersUseCase.execute(principal.id)
+    }
 
     @GetMapping("/won")
     @Operation(summary = "Lista os leilões arrematados pelo usuário autenticado")
@@ -188,12 +219,13 @@ class AuctionController(
     fun list(
         @RequestParam(required = false) status: AuctionStatus?,
         @RequestParam(required = false) sellerId: UUID?,
+        @RequestParam(required = false) shipmentStatus: ShipmentStatus?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
         @AuthenticationPrincipal principal: UserPrincipal?
     ): PageResponse<AuctionResponse> {
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-        val result = listAuctionsUseCase.execute(status, sellerId, principal?.id, pageable)
+        val result = listAuctionsUseCase.execute(status, sellerId, principal?.id, pageable, shipmentStatus)
         val auctionIds = result.content.map { it.id }
         val sellerIds = result.content.map { it.seller.id }.distinct()
         val companyMap = companyRepository.findByUserIdIn(sellerIds).associateBy { it.user.id }

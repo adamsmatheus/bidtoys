@@ -3,6 +3,7 @@ package com.leilao.backend.auctions.api.dto
 import com.leilao.backend.auctions.domain.Auction
 import com.leilao.backend.auctions.domain.AuctionImage
 import com.leilao.backend.auctions.domain.AuctionStatus
+import com.leilao.backend.auctions.domain.ShipmentStatus
 import com.leilao.backend.companies.domain.Company
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
@@ -83,7 +84,10 @@ data class AuctionResponse(
     val updatedAt: Instant,
     val images: List<AuctionImageResponse> = emptyList(),
     val company: CompanyInfo? = null,
-    val bidCount: Long = 0
+    val bidCount: Long = 0,
+    val holdShipment: Boolean = false,
+    val shipmentStatus: ShipmentStatus? = null,
+    val trackingCode: String? = null
 ) {
     companion object {
         fun from(
@@ -112,13 +116,44 @@ data class AuctionResponse(
             updatedAt = auction.updatedAt,
             images = images.map { AuctionImageResponse(it.id, it.fileUrl, it.position) },
             company = company?.let { CompanyInfo(it.id, it.name, it.logoUrl, it.pixKey) },
-            bidCount = bidCount
+            bidCount = bidCount,
+            holdShipment = auction.holdShipment,
+            shipmentStatus = auction.shipmentStatus,
+            trackingCode = auction.trackingCode
         )
     }
 }
 
 data class CancelAuctionRequest(
     val reason: String? = null
+)
+
+data class DeclarePaymentRequest(
+    val holdShipment: Boolean = false
+)
+
+data class BuyerAuctionItem(
+    val id: UUID,
+    val title: String,
+    val currentPriceAmount: Int,
+    val status: AuctionStatus,
+    val finishedAt: Instant?,
+    val holdShipment: Boolean,
+    val shipmentStatus: ShipmentStatus? = null,
+    val trackingCode: String? = null
+)
+
+data class UpdateShipmentStatusRequest(
+    val shipmentStatus: ShipmentStatus,
+    val trackingCode: String? = null
+)
+
+data class BuyerSummaryResponse(
+    val buyerId: UUID,
+    val buyerName: String,
+    val auctionCount: Int,
+    val totalAmount: Int,
+    val auctions: List<BuyerAuctionItem>
 )
 
 data class RejectAuctionRequest(

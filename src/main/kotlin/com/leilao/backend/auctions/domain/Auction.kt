@@ -100,6 +100,19 @@ class Auction(
     var finishedAt: Instant? = null
         protected set
 
+    @Column(name = "hold_shipment", nullable = false)
+    var holdShipment: Boolean = false
+        protected set
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "shipment_status", length = 20)
+    var shipmentStatus: ShipmentStatus? = null
+        protected set
+
+    @Column(name = "tracking_code", length = 100)
+    var trackingCode: String? = null
+        protected set
+
     @Version
     @Column(name = "version", nullable = false)
     var version: Long = 0
@@ -182,12 +195,13 @@ class Auction(
         this.finishedAt = Instant.now()
     }
 
-    fun declarePayment(winnerId: UUID) {
+    fun declarePayment(winnerId: UUID, holdShipment: Boolean = false) {
         check(status == AuctionStatus.FINISHED_WITH_WINNER) {
             "Pagamento só pode ser declarado em leilões com vencedor"
         }
         check(winnerUserId == winnerId) { "Somente o vencedor pode declarar o pagamento" }
         status = AuctionStatus.PAYMENT_DECLARED
+        this.holdShipment = holdShipment
     }
 
     fun confirmPayment(sellerId: UUID) {
@@ -196,6 +210,22 @@ class Auction(
         }
         check(seller.id == sellerId) { "Somente o vendedor pode confirmar o pagamento" }
         status = AuctionStatus.PAYMENT_CONFIRMED
+        shipmentStatus = ShipmentStatus.PENDING
+    }
+
+    fun updateShipmentStatus(sellerId: UUID, newStatus: ShipmentStatus, trackingCode: String? = null) {
+        check(status == AuctionStatus.PAYMENT_CONFIRMED) {
+            "Status de envio só pode ser atualizado após pagamento confirmado"
+        }
+        check(seller.id == sellerId) { "Somente o vendedor pode atualizar o status de envio" }
+        val current = shipmentStatus ?: ShipmentStatus.PENDING
+        check(newStatus.ordinal > current.ordinal) {
+            "Transição de status de envio inválida: $current → $newStatus"
+        }
+        this.shipmentStatus = newStatus
+        if (trackingCode != null) {
+            this.trackingCode = trackingCode
+        }
     }
 
     fun disputePayment(sellerId: UUID) {

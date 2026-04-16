@@ -2,6 +2,7 @@ package com.leilao.backend.auctions.infrastructure
 
 import com.leilao.backend.auctions.domain.Auction
 import com.leilao.backend.auctions.domain.AuctionStatus
+import com.leilao.backend.auctions.domain.ShipmentStatus
 import jakarta.persistence.LockModeType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -40,4 +41,8 @@ interface AuctionRepository : JpaRepository<Auction, UUID> {
     fun existsBySellerIdAndStatusNotIn(sellerId: UUID, statuses: Collection<AuctionStatus>): Boolean
 
     fun findByWinnerUserId(winnerUserId: UUID, pageable: Pageable): Page<Auction>
+
+    fun findBySellerIdAndWinnerUserIdIsNotNull(sellerId: UUID): List<Auction>
+
+    fun findBySellerIdAndShipmentStatus(sellerId: UUID, shipmentStatus: ShipmentStatus, pageable: Pageable): Page<Auction>
 }

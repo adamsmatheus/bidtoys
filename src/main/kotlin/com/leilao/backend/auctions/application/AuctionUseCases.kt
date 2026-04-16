@@ -5,6 +5,7 @@ import com.leilao.backend.auctions.api.dto.UpdateAuctionRequest
 import com.leilao.backend.auctions.domain.Auction
 import com.leilao.backend.auctions.domain.AuctionStatus
 import com.leilao.backend.auctions.domain.AuctionStatusHistory
+import com.leilao.backend.auctions.domain.ShipmentStatus
 import com.leilao.backend.auctions.infrastructure.AuctionRepository
 import com.leilao.backend.auctions.infrastructure.AuctionStatusHistoryRepository
 import com.leilao.backend.companies.infrastructure.CompanyRepository
@@ -216,8 +217,19 @@ class ListAuctionsUseCase(
     private val auctionRepository: AuctionRepository
 ) {
     @Transactional(readOnly = true)
-    fun execute(status: AuctionStatus?, sellerId: UUID?, requesterId: UUID?, pageable: Pageable): Page<Auction> {
+    fun execute(
+        status: AuctionStatus?,
+        sellerId: UUID?,
+        requesterId: UUID?,
+        pageable: Pageable,
+        shipmentStatus: ShipmentStatus? = null
+    ): Page<Auction> {
         val isOwner = requesterId != null && requesterId == sellerId
+
+        // Filtro por shipmentStatus — só para o dono, implica PAYMENT_CONFIRMED
+        if (isOwner && shipmentStatus != null && sellerId != null) {
+            return auctionRepository.findBySellerIdAndShipmentStatus(sellerId, shipmentStatus, pageable)
+        }
 
         return when {
             // Dono vendo seus próprios leilões — todos os statuses permitidos
