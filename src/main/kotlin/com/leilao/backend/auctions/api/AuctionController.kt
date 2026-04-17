@@ -20,6 +20,7 @@ import com.leilao.backend.auctions.application.ListWonAuctionsUseCase
 import com.leilao.backend.auctions.application.StartAuctionUseCase
 import com.leilao.backend.auctions.application.SubmitForApprovalUseCase
 import com.leilao.backend.auctions.application.UpdateAuctionUseCase
+import com.leilao.backend.auctions.application.RequestDeliveryUseCase
 import com.leilao.backend.auctions.application.UpdateShipmentStatusUseCase
 import com.leilao.backend.auctions.application.UploadAuctionImageUseCase
 import com.leilao.backend.auctions.domain.AuctionStatus
@@ -63,6 +64,7 @@ class AuctionController(
     private val declarePaymentUseCase: DeclarePaymentUseCase,
     private val confirmPaymentUseCase: ConfirmPaymentUseCase,
     private val updateShipmentStatusUseCase: UpdateShipmentStatusUseCase,
+    private val requestDeliveryUseCase: RequestDeliveryUseCase,
     private val getAuctionUseCase: GetAuctionUseCase,
     private val listAuctionsUseCase: ListAuctionsUseCase,
     private val listWonAuctionsUseCase: ListWonAuctionsUseCase,
@@ -164,6 +166,18 @@ class AuctionController(
         return AuctionResponse.from(auction, company = company)
     }
 
+    @PostMapping("/{id}/request-delivery")
+    @Operation(summary = "Vencedor solicita entrega de item com envio futuro")
+    fun requestDelivery(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ): AuctionResponse {
+        requestDeliveryUseCase.execute(id, principal.id)
+        val auction = getAuctionUseCase.execute(id)
+        val company = companyRepository.findByUserId(auction.seller.id).orElse(null)
+        return AuctionResponse.from(auction, company = company)
+    }
+
     @PostMapping("/{id}/cancel")
     @Operation(summary = "Cancela o leilão (antes de iniciar)")
     fun cancel(
@@ -198,12 +212,13 @@ class AuctionController(
     @Operation(summary = "Lista os leilões arrematados pelo usuário autenticado")
     fun listWon(
         @RequestParam(required = false) status: AuctionStatus?,
+        @RequestParam(required = false) holdShipment: Boolean?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
         @AuthenticationPrincipal principal: UserPrincipal
     ): PageResponse<AuctionResponse> {
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "finishedAt"))
-        val result = listWonAuctionsUseCase.execute(principal.id, pageable, status)
+        val result = listWonAuctionsUseCase.execute(principal.id, pageable, status, holdShipment)
         val auctionIds = result.content.map { it.id }
         val sellerIds = result.content.map { it.seller.id }.distinct()
         val companyMap = companyRepository.findByUserIdIn(sellerIds).associateBy { it.user.id }

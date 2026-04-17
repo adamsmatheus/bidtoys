@@ -69,6 +69,19 @@ class UserNotificationBroadcastService(
         )
     }
 
+    fun notifyDeliveryRequested(sellerId: UUID, auctionId: UUID, auctionTitle: String, buyerName: String) {
+        send(
+            userId = sellerId,
+            auctionId = auctionId,
+            UserNotificationMessage(
+                type = "DELIVERY_REQUESTED",
+                title = "Entrega solicitada",
+                message = "O comprador \"$buyerName\" solicitou a entrega do produto do leilão \"$auctionTitle\".",
+                auctionId = auctionId.toString()
+            )
+        )
+    }
+
     fun notifyShipmentStatusChanged(
         winnerId: UUID,
         auctionId: UUID,

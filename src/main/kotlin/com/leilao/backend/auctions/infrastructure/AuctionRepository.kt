@@ -49,4 +49,6 @@ interface AuctionRepository : JpaRepository<Auction, UUID> {
     fun findBySellerIdAndWinnerUserIdIsNotNull(sellerId: UUID): List<Auction>
 
     fun findBySellerIdAndShipmentStatus(sellerId: UUID, shipmentStatus: ShipmentStatus, pageable: Pageable): Page<Auction>
+
+    fun findByWinnerUserIdAndHoldShipmentTrue(winnerUserId: UUID, pageable: Pageable): Page<Auction>
 }

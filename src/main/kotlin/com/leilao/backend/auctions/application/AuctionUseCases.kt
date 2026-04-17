@@ -207,7 +207,10 @@ class ListWonAuctionsUseCase(
     private val auctionRepository: AuctionRepository
 ) {
     @Transactional(readOnly = true)
-    fun execute(userId: UUID, pageable: Pageable, status: AuctionStatus? = null): Page<Auction> {
+    fun execute(userId: UUID, pageable: Pageable, status: AuctionStatus? = null, holdShipment: Boolean? = null): Page<Auction> {
+        if (holdShipment == true) {
+            return auctionRepository.findByWinnerUserIdAndHoldShipmentTrue(userId, pageable)
+        }
         return when (status) {
             null -> auctionRepository.findByWinnerUserId(userId, pageable)
             else -> auctionRepository.findByWinnerUserIdAndStatus(userId, status, pageable)

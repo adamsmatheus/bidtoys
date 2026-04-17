@@ -213,6 +213,15 @@ class Auction(
         shipmentStatus = ShipmentStatus.PENDING
     }
 
+    fun requestDelivery(winnerId: UUID) {
+        check(holdShipment) { "Este leilão não foi marcado para envio futuro" }
+        check(winnerUserId == winnerId) { "Somente o vencedor pode solicitar a entrega" }
+        check(shipmentStatus == null || shipmentStatus == ShipmentStatus.PENDING) {
+            "Entrega já solicitada ou em processamento"
+        }
+        shipmentStatus = ShipmentStatus.DELIVERY_REQUESTED
+    }
+
     fun updateShipmentStatus(sellerId: UUID, newStatus: ShipmentStatus, trackingCode: String? = null) {
         check(status == AuctionStatus.PAYMENT_CONFIRMED) {
             "Status de envio só pode ser atualizado após pagamento confirmado"
