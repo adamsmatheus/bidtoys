@@ -3,17 +3,19 @@ package com.leilao.backend.notifications.infrastructure.whatsapp
 import com.leilao.backend.notifications.infrastructure.whatsapp.PaymentConfirmedMessagePayload
 import com.leilao.backend.notifications.infrastructure.whatsapp.PaymentDeclaredMessagePayload
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Component
 import java.util.UUID
 
 /**
  * Implementação fake do WhatsApp Gateway para desenvolvimento local e testes.
- * Substitua por uma implementação real (CloudApiWhatsAppGateway) em produção,
- * controlado por profile ou feature flag.
+ * Ativa quando app.whatsapp.enabled=false (padrão).
+ * Em produção, defina WHATSAPP_ENABLED=true para usar CloudApiWhatsAppGateway.
  */
 @Component
 @Primary
+@ConditionalOnProperty(name = ["app.whatsapp.enabled"], havingValue = "false", matchIfMissing = true)
 class FakeWhatsAppGateway : WhatsAppGateway {
 
     private val log = LoggerFactory.getLogger(FakeWhatsAppGateway::class.java)
