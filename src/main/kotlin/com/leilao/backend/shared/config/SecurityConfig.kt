@@ -37,6 +37,8 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/auctions").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/auctions/{id}").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/rifas").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/rifas/{id}").permitAll()
                     // WebSocket
                     .requestMatchers("/ws/**").permitAll()
                     // Swagger / OpenAPI — apenas em desenvolvimento
