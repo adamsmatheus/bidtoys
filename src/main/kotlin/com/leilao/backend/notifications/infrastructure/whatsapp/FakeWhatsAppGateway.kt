@@ -15,7 +15,7 @@ import java.util.UUID
  */
 @Component
 @Primary
-@ConditionalOnProperty(name = ["app.whatsapp.enabled"], havingValue = "false", matchIfMissing = true)
+@ConditionalOnProperty(name = ["app.whatsapp.provider"], havingValue = "fake", matchIfMissing = true)
 class FakeWhatsAppGateway : WhatsAppGateway {
 
     private val log = LoggerFactory.getLogger(FakeWhatsAppGateway::class.java)

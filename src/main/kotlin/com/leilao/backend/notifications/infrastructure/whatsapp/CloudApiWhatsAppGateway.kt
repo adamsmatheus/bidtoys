@@ -11,7 +11,7 @@ import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
 
 @Component
-@ConditionalOnProperty(name = ["app.whatsapp.enabled"], havingValue = "true")
+@ConditionalOnProperty(name = ["app.whatsapp.provider"], havingValue = "meta")
 class CloudApiWhatsAppGateway(
     @Value("\${app.whatsapp.token}") private val token: String,
     @Value("\${app.whatsapp.phone-id}") private val phoneId: String
