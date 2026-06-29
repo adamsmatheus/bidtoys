@@ -2,6 +2,18 @@ spring:
   application:
     name: leilao-backend
 
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/leilao}
     username: ${DB_USERNAME:leilao}
@@ -61,15 +73,13 @@ app:
       public-url: ${MINIO_PUBLIC_URL:http://localhost:9000}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
-  whatsapp:
-    provider: ${WHATSAPP_PROVIDER:fake}
-    token: ${WHATSAPP_TOKEN:}
-    phone-id: ${WHATSAPP_PHONE_ID:}
-    twilio:
-      account-sid: ${TWILIO_ACCOUNT_SID:}
-      auth-token: ${TWILIO_AUTH_TOKEN:}
-      from-number: ${TWILIO_FROM_NUMBER:}
-      sms-from-number: ${TWILIO_SMS_FROM_NUMBER:}
+  telegram:
+    provider: ${TELEGRAM_PROVIDER:fake}
+    bot-token: ${TELEGRAM_BOT_TOKEN:}
+    bot-username: ${TELEGRAM_BOT_USERNAME:BidToysBot}
+    webhook-secret: ${TELEGRAM_WEBHOOK_SECRET:}
+  mail:
+    from: ${MAIL_FROM:noreply@bidtoys.com.br}
   worker:
     auction-closure:
       cron: "0 * * * * *"    # a cada minuto

@@ -20,5 +20,6 @@ enum class NotificationType {
 enum class NotificationChannel {
     WHATSAPP,
     EMAIL,
-    PUSH
+    PUSH,
+    TELEGRAM
 }

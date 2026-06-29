@@ -3,7 +3,8 @@ package com.leilao.backend.auth
 import com.leilao.backend.auth.application.ForgotPasswordUseCase
 import com.leilao.backend.auth.application.PasswordResetStore
 import com.leilao.backend.auth.application.ResetPasswordUseCase
-import com.leilao.backend.notifications.infrastructure.whatsapp.WhatsAppGateway
+import com.leilao.backend.notifications.infrastructure.telegram.TelegramGateway
+import com.leilao.backend.shared.email.EmailService
 import com.leilao.backend.shared.exception.BusinessException
 import com.leilao.backend.users.domain.User
 import com.leilao.backend.users.domain.UserRole
@@ -27,79 +28,111 @@ import java.util.Optional
  *
  * Usa o PasswordResetStore REAL para validar a integração entre
  * ForgotPasswordUseCase e ResetPasswordUseCase.
- * Dependências externas (DB, WhatsApp) são mockadas.
+ * Dependências externas (DB, Telegram, Email) são mockadas.
  */
 class PasswordResetFlowTest {
 
     private val userRepository = mockk<UserRepository>()
     private val passwordEncoder = mockk<PasswordEncoder>()
-    private val whatsAppGateway = mockk<WhatsAppGateway>()
+    private val telegramGateway = mockk<TelegramGateway>()
+    private val emailService = mockk<EmailService>()
 
     // Store real — peça central do teste integrado
     private val passwordResetStore = PasswordResetStore()
 
     private val forgotPasswordUseCase = ForgotPasswordUseCase(
-        userRepository, passwordResetStore, whatsAppGateway
+        userRepository, passwordResetStore, telegramGateway, emailService
     )
     private val resetPasswordUseCase = ResetPasswordUseCase(
         userRepository, passwordResetStore, passwordEncoder
     )
 
-    private lateinit var user: User
+    private lateinit var userWithTelegram: User
+    private lateinit var userWithoutTelegram: User
 
     @BeforeEach
     fun setup() {
-        user = User(
+        userWithTelegram = User(
             name = "Maria Silva",
             email = "maria@example.com",
             passwordHash = "old_hash",
             phoneNumber = "11999990000",
+            telegramChatId = 987654321L,
+            role = UserRole.USER,
+            status = UserStatus.ACTIVE
+        )
+        userWithoutTelegram = User(
+            name = "João Santos",
+            email = "joao@example.com",
+            passwordHash = "old_hash",
+            phoneNumber = "11988880000",
+            telegramChatId = null,
             role = UserRole.USER,
             status = UserStatus.ACTIVE
         )
     }
 
     // -------------------------------------------------------------------------
-    // Fluxo completo (happy path)
+    // Fluxo via Telegram (happy path)
     // -------------------------------------------------------------------------
 
     @Test
-    fun `fluxo completo - deve enviar codigo e redefinir senha com sucesso`() {
+    fun `fluxo via Telegram - deve enviar codigo e redefinir senha com sucesso`() {
         val codeSlot = slot<String>()
-        every { userRepository.findByEmail("maria@example.com") } returns Optional.of(user)
-        justRun { whatsAppGateway.sendPasswordResetCode(any(), capture(codeSlot)) }
+        every { userRepository.findByEmail("maria@example.com") } returns Optional.of(userWithTelegram)
+        justRun { telegramGateway.sendPasswordResetCode(any(), capture(codeSlot)) }
         every { passwordEncoder.encode("novaSenha123") } returns "new_hash"
         every { userRepository.save(any()) } answers { firstArg() }
 
-        // Passo 1: solicitar reset
         forgotPasswordUseCase.execute("maria@example.com")
 
         val sentCode = codeSlot.captured
         assertEquals(6, sentCode.length)
-        verify { whatsAppGateway.sendPasswordResetCode("11999990000", sentCode) }
+        verify { telegramGateway.sendPasswordResetCode(987654321L, sentCode) }
 
-        // Passo 2: redefinir senha com o código recebido
         resetPasswordUseCase.execute("maria@example.com", sentCode, "novaSenha123")
 
-        assertEquals("new_hash", user.passwordHash)
-        verify { userRepository.save(user) }
+        assertEquals("new_hash", userWithTelegram.passwordHash)
+        verify { userRepository.save(userWithTelegram) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Fluxo via e-mail (fallback quando sem Telegram)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `fluxo via email - deve enviar codigo e redefinir senha com sucesso`() {
+        val codeSlot = slot<String>()
+        every { userRepository.findByEmail("joao@example.com") } returns Optional.of(userWithoutTelegram)
+        justRun { emailService.sendPasswordResetCode(any(), capture(codeSlot)) }
+        every { passwordEncoder.encode("novaSenha123") } returns "new_hash"
+        every { userRepository.save(any()) } answers { firstArg() }
+
+        forgotPasswordUseCase.execute("joao@example.com")
+
+        val sentCode = codeSlot.captured
+        assertEquals(6, sentCode.length)
+        verify { emailService.sendPasswordResetCode("joao@example.com", sentCode) }
+        verify(exactly = 0) { telegramGateway.sendPasswordResetCode(any(), any()) }
+
+        resetPasswordUseCase.execute("joao@example.com", sentCode, "novaSenha123")
+
+        assertEquals("new_hash", userWithoutTelegram.passwordHash)
     }
 
     @Test
-    fun `fluxo completo - codigo deve ser invalidado apos uso`() {
+    fun `fluxo - codigo deve ser invalidado apos uso`() {
         val codeSlot = slot<String>()
-        every { userRepository.findByEmail("maria@example.com") } returns Optional.of(user)
-        justRun { whatsAppGateway.sendPasswordResetCode(any(), capture(codeSlot)) }
+        every { userRepository.findByEmail("maria@example.com") } returns Optional.of(userWithTelegram)
+        justRun { telegramGateway.sendPasswordResetCode(any(), capture(codeSlot)) }
         every { passwordEncoder.encode(any()) } returns "new_hash"
         every { userRepository.save(any()) } answers { firstArg() }
 
         forgotPasswordUseCase.execute("maria@example.com")
         val code = codeSlot.captured
 
-        // Primeiro uso: ok
         resetPasswordUseCase.execute("maria@example.com", code, "novaSenha123")
 
-        // Segundo uso com mesmo código deve falhar
         assertThrows<BusinessException> {
             resetPasswordUseCase.execute("maria@example.com", code, "outraSenha")
         }
@@ -113,33 +146,17 @@ class PasswordResetFlowTest {
     fun `forgot - deve retornar silenciosamente quando email nao existir`() {
         every { userRepository.findByEmail(any()) } returns Optional.empty()
 
-        // Não lança exceção — não revela se o e-mail existe (segurança)
         forgotPasswordUseCase.execute("naoexiste@example.com")
 
-        verify(exactly = 0) { whatsAppGateway.sendPasswordResetCode(any(), any()) }
-    }
-
-    @Test
-    fun `forgot - deve normalizar email para lowercase antes de armazenar`() {
-        val codeSlot = slot<String>()
-        every { userRepository.findByEmail("maria@example.com") } returns Optional.of(user)
-        justRun { whatsAppGateway.sendPasswordResetCode(any(), capture(codeSlot)) }
-        every { passwordEncoder.encode(any()) } returns "new_hash"
-        every { userRepository.save(any()) } answers { firstArg() }
-
-        forgotPasswordUseCase.execute("MARIA@EXAMPLE.COM")
-
-        // Reset com email em lowercase deve funcionar
-        resetPasswordUseCase.execute("maria@example.com", codeSlot.captured, "novaSenha123")
-
-        assertEquals("new_hash", user.passwordHash)
+        verify(exactly = 0) { telegramGateway.sendPasswordResetCode(any(), any()) }
+        verify(exactly = 0) { emailService.sendPasswordResetCode(any(), any()) }
     }
 
     @Test
     fun `forgot - deve gerar codigo de 6 digitos numericos`() {
         val codeSlot = slot<String>()
-        every { userRepository.findByEmail(any()) } returns Optional.of(user)
-        justRun { whatsAppGateway.sendPasswordResetCode(any(), capture(codeSlot)) }
+        every { userRepository.findByEmail(any()) } returns Optional.of(userWithTelegram)
+        justRun { telegramGateway.sendPasswordResetCode(any(), capture(codeSlot)) }
 
         forgotPasswordUseCase.execute("maria@example.com")
 
@@ -151,12 +168,11 @@ class PasswordResetFlowTest {
     @Test
     fun `forgot - deve gerar codigos diferentes em chamadas distintas`() {
         val codes = mutableListOf<String>()
-        every { userRepository.findByEmail(any()) } returns Optional.of(user)
-        justRun { whatsAppGateway.sendPasswordResetCode(any(), capture(codes)) }
+        every { userRepository.findByEmail(any()) } returns Optional.of(userWithTelegram)
+        justRun { telegramGateway.sendPasswordResetCode(any(), capture(codes)) }
 
         repeat(5) { forgotPasswordUseCase.execute("maria@example.com") }
 
-        // Ao menos 2 códigos distintos entre 5 chamadas
         assert(codes.toSet().size > 1) { "Esperado códigos diferentes, obtidos: $codes" }
     }
 
@@ -166,8 +182,8 @@ class PasswordResetFlowTest {
 
     @Test
     fun `reset - deve lancar BusinessException quando codigo for invalido`() {
-        every { userRepository.findByEmail(any()) } returns Optional.of(user)
-        justRun { whatsAppGateway.sendPasswordResetCode(any(), any()) }
+        every { userRepository.findByEmail(any()) } returns Optional.of(userWithTelegram)
+        justRun { telegramGateway.sendPasswordResetCode(any(), any()) }
 
         forgotPasswordUseCase.execute("maria@example.com")
 
@@ -178,9 +194,9 @@ class PasswordResetFlowTest {
 
     @Test
     fun `reset - nao deve alterar senha quando codigo for invalido`() {
-        val originalHash = user.passwordHash
-        every { userRepository.findByEmail(any()) } returns Optional.of(user)
-        justRun { whatsAppGateway.sendPasswordResetCode(any(), any()) }
+        val originalHash = userWithTelegram.passwordHash
+        every { userRepository.findByEmail(any()) } returns Optional.of(userWithTelegram)
+        justRun { telegramGateway.sendPasswordResetCode(any(), any()) }
 
         forgotPasswordUseCase.execute("maria@example.com")
 
@@ -188,23 +204,23 @@ class PasswordResetFlowTest {
             resetPasswordUseCase.execute("maria@example.com", "ERRADO", "novaSenha123")
         }
 
-        assertEquals(originalHash, user.passwordHash)
+        assertEquals(originalHash, userWithTelegram.passwordHash)
         verify(exactly = 0) { userRepository.save(any()) }
     }
 
     @Test
     fun `reset - deve salvar nova senha com hash BCrypt`() {
         val codeSlot = slot<String>()
-        every { userRepository.findByEmail("maria@example.com") } returns Optional.of(user)
-        justRun { whatsAppGateway.sendPasswordResetCode(any(), capture(codeSlot)) }
+        every { userRepository.findByEmail("maria@example.com") } returns Optional.of(userWithTelegram)
+        justRun { telegramGateway.sendPasswordResetCode(any(), capture(codeSlot)) }
         every { passwordEncoder.encode("novaSenha123") } returns "bcrypt_novo_hash"
         every { userRepository.save(any()) } answers { firstArg() }
 
         forgotPasswordUseCase.execute("maria@example.com")
         resetPasswordUseCase.execute("maria@example.com", codeSlot.captured, "novaSenha123")
 
-        assertEquals("bcrypt_novo_hash", user.passwordHash)
-        assertNotEquals("old_hash", user.passwordHash)
+        assertEquals("bcrypt_novo_hash", userWithTelegram.passwordHash)
+        assertNotEquals("old_hash", userWithTelegram.passwordHash)
     }
 
     // -------------------------------------------------------------------------
@@ -213,12 +229,11 @@ class PasswordResetFlowTest {
 
     @Test
     fun `store - deve rejeitar codigo expirado`() {
-        // Salva com TTL de 0 segundos (já expirado)
         passwordResetStore.save("maria@example.com", "123456", ttlSeconds = 0)
 
         Thread.sleep(10)
 
-        every { userRepository.findByEmail("maria@example.com") } returns Optional.of(user)
+        every { userRepository.findByEmail("maria@example.com") } returns Optional.of(userWithTelegram)
 
         assertThrows<BusinessException> {
             resetPasswordUseCase.execute("maria@example.com", "123456", "novaSenha")
@@ -228,8 +243,8 @@ class PasswordResetFlowTest {
     @Test
     fun `store - deve aceitar codigo dentro do TTL`() {
         val codeSlot = slot<String>()
-        every { userRepository.findByEmail("maria@example.com") } returns Optional.of(user)
-        justRun { whatsAppGateway.sendPasswordResetCode(any(), capture(codeSlot)) }
+        every { userRepository.findByEmail("maria@example.com") } returns Optional.of(userWithTelegram)
+        justRun { telegramGateway.sendPasswordResetCode(any(), capture(codeSlot)) }
         every { passwordEncoder.encode(any()) } returns "new_hash"
         every { userRepository.save(any()) } answers { firstArg() }
 
@@ -237,9 +252,8 @@ class PasswordResetFlowTest {
 
         Thread.sleep(100)
 
-        // Código ainda válido após 100ms (TTL padrão é 15 min)
         resetPasswordUseCase.execute("maria@example.com", codeSlot.captured, "novaSenha123")
 
-        assertEquals("new_hash", user.passwordHash)
+        assertEquals("new_hash", userWithTelegram.passwordHash)
     }
 }

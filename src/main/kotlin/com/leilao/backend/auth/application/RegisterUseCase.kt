@@ -15,18 +15,17 @@ import org.springframework.transaction.annotation.Transactional
 class RegisterUseCase(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
-    private val verificationStore: WhatsAppVerificationStore
+    private val verificationStore: TelegramVerificationStore
 ) {
 
     @Transactional
     fun execute(request: RegisterRequest): User {
-        if (!verificationStore.verify(request.whatsappNumber, request.verificationCode)) {
-            throw BusinessException(
-                "Código de verificação inválido ou expirado",
-                "INVALID_VERIFICATION_CODE",
+        val (phoneNumber, chatId) = verificationStore.getIfVerified(request.verificationToken)
+            ?: throw BusinessException(
+                "Verificação do Telegram não encontrada ou expirada",
+                "INVALID_VERIFICATION_TOKEN",
                 HttpStatus.UNPROCESSABLE_ENTITY
             )
-        }
 
         if (userRepository.existsByEmail(request.email)) {
             throw ConflictException("E-mail já cadastrado", "EMAIL_ALREADY_EXISTS")
@@ -36,8 +35,8 @@ class RegisterUseCase(
             name = request.name,
             email = request.email.lowercase().trim(),
             passwordHash = passwordEncoder.encode(request.password),
-            phoneNumber = request.whatsappNumber,
-            whatsappEnabled = true
+            phoneNumber = phoneNumber,
+            telegramChatId = chatId
         )
 
         val address = UserAddress(
@@ -52,7 +51,7 @@ class RegisterUseCase(
         user.address = address
 
         val saved = userRepository.save(user)
-        verificationStore.remove(request.whatsappNumber)
+        verificationStore.remove(request.verificationToken)
         return saved
     }
 }

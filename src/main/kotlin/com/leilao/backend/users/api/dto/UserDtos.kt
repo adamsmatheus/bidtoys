@@ -12,7 +12,6 @@ import java.util.UUID
 data class UpdateUserRequest(
     @field:NotBlank val name: String? = null,
     val phoneNumber: String? = null,
-    val whatsappEnabled: Boolean? = null,
     val status: UserStatus? = null
 )
 
@@ -41,7 +40,7 @@ data class UserResponse(
     val name: String,
     val email: String,
     val phoneNumber: String,
-    val whatsappEnabled: Boolean,
+    val telegramConnected: Boolean,
     val role: UserRole,
     val status: UserStatus,
     val createdAt: Instant,
@@ -53,7 +52,7 @@ data class UserResponse(
             name = user.name,
             email = user.email,
             phoneNumber = user.phoneNumber,
-            whatsappEnabled = user.whatsappEnabled,
+            telegramConnected = user.telegramChatId != null,
             role = user.role,
             status = user.status,
             createdAt = user.createdAt,

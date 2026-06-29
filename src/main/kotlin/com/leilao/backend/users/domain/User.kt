@@ -25,8 +25,8 @@ class User(
     @Column(name = "phone_number", nullable = false, length = 20)
     var phoneNumber: String,
 
-    @Column(name = "whatsapp_enabled", nullable = false)
-    var whatsappEnabled: Boolean = true,
+    @Column(name = "telegram_chat_id")
+    var telegramChatId: Long? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)

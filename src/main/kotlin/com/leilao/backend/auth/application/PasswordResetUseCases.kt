@@ -1,6 +1,7 @@
 package com.leilao.backend.auth.application
 
-import com.leilao.backend.notifications.infrastructure.whatsapp.WhatsAppGateway
+import com.leilao.backend.notifications.infrastructure.telegram.TelegramGateway
+import com.leilao.backend.shared.email.EmailService
 import com.leilao.backend.shared.exception.BusinessException
 import com.leilao.backend.users.infrastructure.UserRepository
 import org.slf4j.LoggerFactory
@@ -14,7 +15,8 @@ import kotlin.random.Random
 class ForgotPasswordUseCase(
     private val userRepository: UserRepository,
     private val passwordResetStore: PasswordResetStore,
-    private val whatsAppGateway: WhatsAppGateway
+    private val telegramGateway: TelegramGateway,
+    private val emailService: EmailService
 ) {
     private val log = LoggerFactory.getLogger(ForgotPasswordUseCase::class.java)
 
@@ -29,9 +31,14 @@ class ForgotPasswordUseCase(
 
         val code = String.format("%06d", Random.nextInt(0, 1_000_000))
         passwordResetStore.save(user.email, code)
-        whatsAppGateway.sendPasswordResetCode(user.phoneNumber, code)
 
-        log.info("[ForgotPassword] Código enviado para usuário {}", user.id)
+        if (user.telegramChatId != null) {
+            telegramGateway.sendPasswordResetCode(user.telegramChatId, code)
+            log.info("[ForgotPassword] Código enviado via Telegram para usuário {}", user.id)
+        } else {
+            emailService.sendPasswordResetCode(user.email, code)
+            log.info("[ForgotPassword] Código enviado via e-mail para usuário {}", user.id)
+        }
     }
 }
 

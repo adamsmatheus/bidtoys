@@ -5,9 +5,9 @@ import com.leilao.backend.notifications.domain.Notification
 import com.leilao.backend.notifications.domain.NotificationChannel
 import com.leilao.backend.notifications.domain.NotificationType
 import com.leilao.backend.notifications.infrastructure.NotificationRepository
-import com.leilao.backend.notifications.infrastructure.whatsapp.PaymentConfirmedMessagePayload
-import com.leilao.backend.notifications.infrastructure.whatsapp.WhatsAppGateway
-import com.leilao.backend.notifications.infrastructure.whatsapp.WhatsAppSendException
+import com.leilao.backend.notifications.infrastructure.telegram.PaymentConfirmedTelegramPayload
+import com.leilao.backend.notifications.infrastructure.telegram.TelegramGateway
+import com.leilao.backend.notifications.infrastructure.telegram.TelegramSendException
 import com.leilao.backend.users.infrastructure.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -26,7 +26,7 @@ data class PaymentConfirmedNotificationCommand(
 class SendPaymentConfirmedNotificationUseCase(
     private val notificationRepository: NotificationRepository,
     private val userRepository: UserRepository,
-    private val whatsAppGateway: WhatsAppGateway,
+    private val telegramGateway: TelegramGateway,
     private val objectMapper: ObjectMapper
 ) {
 
@@ -45,32 +45,31 @@ class SendPaymentConfirmedNotificationUseCase(
                 userId = command.winnerUserId,
                 auctionId = command.auctionId,
                 type = NotificationType.PAYMENT_CONFIRMED,
-                channel = NotificationChannel.WHATSAPP,
+                channel = NotificationChannel.TELEGRAM,
                 payloadJson = objectMapper.writeValueAsString(command)
             )
         )
 
-        if (!winner.whatsappEnabled) {
-            log.warn("Vencedor {} não tem WhatsApp habilitado", command.winnerUserId)
-            notification.markFailed("WhatsApp não habilitado")
+        if (winner.telegramChatId == null) {
+            log.warn("Vencedor {} não tem Telegram conectado", command.winnerUserId)
+            notification.markFailed("Telegram não conectado")
             notificationRepository.save(notification)
             return
         }
 
         try {
-            val providerMessageId = whatsAppGateway.sendPaymentConfirmedMessage(
-                winner.phoneNumber,
-                PaymentConfirmedMessagePayload(
+            val providerMessageId = telegramGateway.sendPaymentConfirmedMessage(
+                winner.telegramChatId,
+                PaymentConfirmedTelegramPayload(
                     winnerName = winner.name,
                     auctionTitle = command.auctionTitle,
-                    amount = command.amount,
-                    auctionId = command.auctionId.toString()
+                    amount = command.amount
                 )
             )
             notification.markSent(providerMessageId)
             notificationRepository.save(notification)
             log.info("Notificação de pagamento confirmado enviada ao vencedor {} para leilão {}", command.winnerUserId, command.auctionId)
-        } catch (ex: WhatsAppSendException) {
+        } catch (ex: TelegramSendException) {
             log.error("Falha ao notificar vencedor {} sobre confirmação: {}", command.winnerUserId, ex.message)
             notification.markFailed(ex.message ?: "Erro desconhecido")
             notificationRepository.save(notification)

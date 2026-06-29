@@ -6,7 +6,7 @@ enum class AdminAlertStatus {
 }
 
 enum class AdminAlertType {
-    WHATSAPP_FAILED,
+    TELEGRAM_FAILED,
     AUCTION_MISMATCH,
     WORKER_ERROR,
     SYSTEM_ERROR

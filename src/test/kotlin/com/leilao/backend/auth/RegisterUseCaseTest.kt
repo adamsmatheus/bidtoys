@@ -3,7 +3,7 @@ package com.leilao.backend.auth
 import com.leilao.backend.auth.api.dto.AddressRequest
 import com.leilao.backend.auth.api.dto.RegisterRequest
 import com.leilao.backend.auth.application.RegisterUseCase
-import com.leilao.backend.auth.application.WhatsAppVerificationStore
+import com.leilao.backend.auth.application.TelegramVerificationStore
 import com.leilao.backend.shared.exception.BusinessException
 import com.leilao.backend.shared.exception.ConflictException
 import com.leilao.backend.users.infrastructure.UserRepository
@@ -21,7 +21,7 @@ class RegisterUseCaseTest {
 
     private val userRepository = mockk<UserRepository>()
     private val passwordEncoder = mockk<PasswordEncoder>()
-    private val verificationStore = mockk<WhatsAppVerificationStore>()
+    private val verificationStore = mockk<TelegramVerificationStore>()
 
     private val useCase = RegisterUseCase(userRepository, passwordEncoder, verificationStore)
 
@@ -33,18 +33,19 @@ class RegisterUseCaseTest {
         number = "1000"
     )
 
+    private val validToken = "abc-token-123"
+
     private val validRequest = RegisterRequest(
         name = "João Silva",
         email = "joao@example.com",
         password = "senha123",
-        whatsappNumber = "11999999999",
-        verificationCode = "123456",
+        verificationToken = validToken,
         address = validAddress
     )
 
     @BeforeEach
     fun setup() {
-        every { verificationStore.verify(any(), any()) } returns true
+        every { verificationStore.getIfVerified(validToken) } returns Pair("+5511999999999", 123456789L)
         every { userRepository.existsByEmail(any()) } returns false
         every { passwordEncoder.encode(any()) } returns "hashed_password"
         every { userRepository.save(any()) } answers { firstArg() }
@@ -57,9 +58,10 @@ class RegisterUseCaseTest {
 
         assertEquals("joao@example.com", result.email)
         assertEquals("João Silva", result.name)
-        assertEquals("11999999999", result.phoneNumber)
+        assertEquals("+5511999999999", result.phoneNumber)
+        assertEquals(123456789L, result.telegramChatId)
         verify { userRepository.save(any()) }
-        verify { verificationStore.remove("11999999999") }
+        verify { verificationStore.remove(validToken) }
     }
 
     @Test
@@ -81,8 +83,8 @@ class RegisterUseCaseTest {
     }
 
     @Test
-    fun `deve lançar BusinessException quando código de verificação for inválido`() {
-        every { verificationStore.verify(any(), any()) } returns false
+    fun `deve lançar BusinessException quando token de verificação for inválido`() {
+        every { verificationStore.getIfVerified(validToken) } returns null
 
         assertThrows<BusinessException> {
             useCase.execute(validRequest)
@@ -99,9 +101,9 @@ class RegisterUseCaseTest {
     }
 
     @Test
-    fun `deve remover código de verificação após cadastro bem-sucedido`() {
+    fun `deve remover token de verificação após cadastro bem-sucedido`() {
         useCase.execute(validRequest)
 
-        verify { verificationStore.remove(validRequest.whatsappNumber) }
+        verify { verificationStore.remove(validToken) }
     }
 }

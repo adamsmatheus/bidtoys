@@ -8,9 +8,9 @@ import com.leilao.backend.notifications.domain.Notification
 import com.leilao.backend.notifications.domain.NotificationChannel
 import com.leilao.backend.notifications.domain.NotificationType
 import com.leilao.backend.notifications.infrastructure.NotificationRepository
-import com.leilao.backend.notifications.infrastructure.whatsapp.WhatsAppGateway
-import com.leilao.backend.notifications.infrastructure.whatsapp.WhatsAppSendException
-import com.leilao.backend.notifications.infrastructure.whatsapp.WinnerMessagePayload
+import com.leilao.backend.notifications.infrastructure.telegram.TelegramGateway
+import com.leilao.backend.notifications.infrastructure.telegram.TelegramSendException
+import com.leilao.backend.notifications.infrastructure.telegram.WinnerTelegramPayload
 import com.leilao.backend.auctions.infrastructure.AuctionRepository
 import com.leilao.backend.companies.infrastructure.CompanyRepository
 import com.leilao.backend.users.infrastructure.UserRepository
@@ -33,7 +33,7 @@ class SendWinnerNotificationUseCase(
     private val userRepository: UserRepository,
     private val auctionRepository: AuctionRepository,
     private val companyRepository: CompanyRepository,
-    private val whatsAppGateway: WhatsAppGateway,
+    private val telegramGateway: TelegramGateway,
     private val objectMapper: ObjectMapper
 ) {
 
@@ -55,16 +55,16 @@ class SendWinnerNotificationUseCase(
                 userId = command.winnerUserId,
                 auctionId = command.auctionId,
                 type = NotificationType.WINNER_NOTIFICATION,
-                channel = NotificationChannel.WHATSAPP,
+                channel = NotificationChannel.TELEGRAM,
                 payloadJson = payloadJson
             )
         )
 
-        if (!winner.whatsappEnabled) {
-            log.warn("Vencedor {} não tem WhatsApp habilitado", command.winnerUserId)
-            notification.markFailed("WhatsApp não habilitado")
+        if (winner.telegramChatId == null) {
+            log.warn("Vencedor {} não tem Telegram conectado", command.winnerUserId)
+            notification.markFailed("Telegram não conectado")
             notificationRepository.save(notification)
-            createAdminAlert(command, "Vencedor sem WhatsApp habilitado: ${winner.email}")
+            createAdminAlert(command, "Vencedor sem Telegram conectado: ${winner.email}")
             return
         }
 
@@ -73,28 +73,27 @@ class SendWinnerNotificationUseCase(
             .orElse(null)
 
         try {
-            val messagePayload = WinnerMessagePayload(
+            val messagePayload = WinnerTelegramPayload(
                 recipientName = winner.name,
                 auctionTitle = command.auctionTitle,
                 winningAmount = command.finalAmount,
-                auctionId = command.auctionId.toString(),
                 sellerPixKey = sellerPixKey
             )
 
-            val providerMessageId = whatsAppGateway.sendWinnerMessage(winner.phoneNumber, messagePayload)
+            val providerMessageId = telegramGateway.sendWinnerMessage(winner.telegramChatId, messagePayload)
 
             notification.markSent(providerMessageId)
             notificationRepository.save(notification)
 
             log.info("Notificação de vencedor enviada com sucesso para leilão {}", command.auctionId)
 
-        } catch (ex: WhatsAppSendException) {
-            log.error("Falha ao enviar WhatsApp para leilão {}: {}", command.auctionId, ex.message)
+        } catch (ex: TelegramSendException) {
+            log.error("Falha ao enviar Telegram para leilão {}: {}", command.auctionId, ex.message)
 
             notification.markFailed(ex.message ?: "Erro desconhecido")
             notificationRepository.save(notification)
 
-            createAdminAlert(command, "Falha ao enviar WhatsApp: ${ex.message}")
+            createAdminAlert(command, "Falha ao enviar Telegram: ${ex.message}")
         }
 
         // IMPORTANTE: o leilão continua encerrado independentemente do resultado da notificação
@@ -103,7 +102,7 @@ class SendWinnerNotificationUseCase(
     private fun createAdminAlert(command: WinnerNotificationCommand, message: String) {
         adminAlertRepository.save(
             AdminAlert(
-                type = AdminAlertType.WHATSAPP_FAILED,
+                type = AdminAlertType.TELEGRAM_FAILED,
                 auctionId = command.auctionId,
                 message = message
             )
