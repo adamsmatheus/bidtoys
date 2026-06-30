@@ -60,30 +60,3 @@ class ResetPasswordUseCase(
         passwordResetStore.remove(email)
     }
 }
-
-@Service
-class ResetPasswordUseCase(
-    private val userRepository: UserRepository,
-    private val passwordResetStore: PasswordResetStore,
-    private val passwordEncoder: PasswordEncoder
-) {
-    @Transactional
-    fun execute(email: String, code: String, newPassword: String) {
-        if (!passwordResetStore.verify(email, code)) {
-            throw BusinessException(
-                "Código inválido ou expirado",
-                "INVALID_RESET_CODE",
-                HttpStatus.UNPROCESSABLE_ENTITY
-            )
-        }
-
-        val user = userRepository.findByEmail(email.lowercase().trim())
-            .orElseThrow {
-                BusinessException("Usuário não encontrado", "USER_NOT_FOUND", HttpStatus.NOT_FOUND)
-            }
-
-        user.passwordHash = passwordEncoder.encode(newPassword)
-        userRepository.save(user)
-        passwordResetStore.remove(email)
-    }
-}
