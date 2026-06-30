@@ -80,7 +80,7 @@ class SendWinnerNotificationUseCase(
                 sellerPixKey = sellerPixKey
             )
 
-            val providerMessageId = telegramGateway.sendWinnerMessage(winner.telegramChatId, messagePayload)
+            val providerMessageId = telegramGateway.sendWinnerMessage(winner.telegramChatId!!, messagePayload)
 
             notification.markSent(providerMessageId)
             notificationRepository.save(notification)

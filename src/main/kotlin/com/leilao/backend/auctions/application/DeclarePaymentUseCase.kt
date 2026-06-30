@@ -22,12 +22,12 @@ class DeclarePaymentUseCase(
 ) {
 
     @Transactional
-    fun execute(auctionId: UUID, winnerId: UUID, holdShipment: Boolean = false) {
+    fun execute(auctionId: UUID, winnerId: UUID, holdShipment: Boolean = false, receiptUrl: String? = null) {
         val auction = auctionRepository.findByIdWithLock(auctionId)
             .orElseThrow { NoSuchElementException("Leilão $auctionId não encontrado") }
 
         val fromStatus = auction.status
-        auction.declarePayment(winnerId, holdShipment)
+        auction.declarePayment(winnerId, holdShipment, receiptUrl)
         auctionRepository.save(auction)
 
         statusHistoryRepository.save(

@@ -6,6 +6,7 @@ import com.leilao.backend.auctions.api.dto.BuyerSummaryResponse
 import com.leilao.backend.auctions.api.dto.CancelAuctionRequest
 import com.leilao.backend.auctions.api.dto.CreateAuctionRequest
 import com.leilao.backend.auctions.api.dto.DeclarePaymentRequest
+import com.leilao.backend.auctions.api.dto.PaymentReceiptResponse
 import com.leilao.backend.auctions.api.dto.UpdateAuctionRequest
 import com.leilao.backend.auctions.api.dto.UpdateShipmentStatusRequest
 import com.leilao.backend.auctions.application.CancelAuctionUseCase
@@ -23,6 +24,7 @@ import com.leilao.backend.auctions.application.UpdateAuctionUseCase
 import com.leilao.backend.auctions.application.RequestDeliveryUseCase
 import com.leilao.backend.auctions.application.UpdateShipmentStatusUseCase
 import com.leilao.backend.auctions.application.UploadAuctionImageUseCase
+import com.leilao.backend.auctions.application.UploadPaymentReceiptUseCase
 import com.leilao.backend.auctions.domain.AuctionStatus
 import com.leilao.backend.auctions.domain.ShipmentStatus
 import com.leilao.backend.auctions.infrastructure.AuctionImageRepository
@@ -70,6 +72,7 @@ class AuctionController(
     private val listWonAuctionsUseCase: ListWonAuctionsUseCase,
     private val listBuyersUseCase: ListBuyersUseCase,
     private val uploadAuctionImageUseCase: UploadAuctionImageUseCase,
+    private val uploadPaymentReceiptUseCase: UploadPaymentReceiptUseCase,
     private val deleteAuctionImageUseCase: DeleteAuctionImageUseCase,
     private val auctionImageRepository: AuctionImageRepository,
     private val bidRepository: BidRepository,
@@ -116,6 +119,17 @@ class AuctionController(
         return AuctionResponse.from(startAuctionUseCase.execute(id, principal.id))
     }
 
+    @PostMapping("/{id}/payment-receipt", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    @Operation(summary = "Vencedor faz upload do comprovante de pagamento")
+    fun uploadPaymentReceipt(
+        @PathVariable id: UUID,
+        @RequestParam("file") file: MultipartFile,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ): PaymentReceiptResponse {
+        val receiptUrl = uploadPaymentReceiptUseCase.execute(id, principal.id, file)
+        return PaymentReceiptResponse(receiptUrl = receiptUrl)
+    }
+
     @PostMapping("/{id}/declare-payment")
     @Operation(summary = "Vencedor declara que realizou o pagamento via PIX")
     fun declarePayment(
@@ -123,7 +137,7 @@ class AuctionController(
         @RequestBody(required = false) request: DeclarePaymentRequest?,
         @AuthenticationPrincipal principal: UserPrincipal
     ): AuctionResponse {
-        declarePaymentUseCase.execute(id, principal.id, request?.holdShipment ?: false)
+        declarePaymentUseCase.execute(id, principal.id, request?.holdShipment ?: false, request?.receiptUrl)
         val auction = getAuctionUseCase.execute(id)
         val company = companyRepository.findByUserId(auction.seller.id).orElse(null)
         return AuctionResponse.from(auction, company = company)

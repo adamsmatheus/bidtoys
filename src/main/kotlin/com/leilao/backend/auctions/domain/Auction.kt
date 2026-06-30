@@ -113,6 +113,10 @@ class Auction(
     var trackingCode: String? = null
         protected set
 
+    @Column(name = "payment_receipt_url", length = 1000)
+    var paymentReceiptUrl: String? = null
+        protected set
+
     @Version
     @Column(name = "version", nullable = false)
     var version: Long = 0
@@ -195,13 +199,14 @@ class Auction(
         this.finishedAt = Instant.now()
     }
 
-    fun declarePayment(winnerId: UUID, holdShipment: Boolean = false) {
+    fun declarePayment(winnerId: UUID, holdShipment: Boolean = false, paymentReceiptUrl: String? = null) {
         check(status == AuctionStatus.FINISHED_WITH_WINNER) {
             "Pagamento só pode ser declarado em leilões com vencedor"
         }
         check(winnerUserId == winnerId) { "Somente o vencedor pode declarar o pagamento" }
         status = AuctionStatus.PAYMENT_DECLARED
         this.holdShipment = holdShipment
+        this.paymentReceiptUrl = paymentReceiptUrl
     }
 
     fun confirmPayment(sellerId: UUID) {

@@ -59,7 +59,7 @@ class SendPaymentDeclaredNotificationUseCase(
 
         try {
             val providerMessageId = telegramGateway.sendPaymentDeclaredMessage(
-                seller.telegramChatId,
+                seller.telegramChatId!!,
                 PaymentDeclaredTelegramPayload(
                     sellerName = seller.name,
                     auctionTitle = command.auctionTitle,

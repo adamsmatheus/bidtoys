@@ -87,7 +87,8 @@ data class AuctionResponse(
     val bidCount: Long = 0,
     val holdShipment: Boolean = false,
     val shipmentStatus: ShipmentStatus? = null,
-    val trackingCode: String? = null
+    val trackingCode: String? = null,
+    val paymentReceiptUrl: String? = null
 ) {
     companion object {
         fun from(
@@ -119,7 +120,8 @@ data class AuctionResponse(
             bidCount = bidCount,
             holdShipment = auction.holdShipment,
             shipmentStatus = auction.shipmentStatus,
-            trackingCode = auction.trackingCode
+            trackingCode = auction.trackingCode,
+            paymentReceiptUrl = auction.paymentReceiptUrl
         )
     }
 }
@@ -129,7 +131,12 @@ data class CancelAuctionRequest(
 )
 
 data class DeclarePaymentRequest(
-    val holdShipment: Boolean = false
+    val holdShipment: Boolean = false,
+    val receiptUrl: String? = null
+)
+
+data class PaymentReceiptResponse(
+    val receiptUrl: String
 )
 
 data class BuyerAuctionItem(

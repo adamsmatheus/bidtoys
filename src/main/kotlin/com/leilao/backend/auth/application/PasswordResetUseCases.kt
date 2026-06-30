@@ -33,7 +33,7 @@ class ForgotPasswordUseCase(
         passwordResetStore.save(user.email, code)
 
         if (user.telegramChatId != null) {
-            telegramGateway.sendPasswordResetCode(user.telegramChatId, code)
+            telegramGateway.sendPasswordResetCode(user.telegramChatId!!, code)
             log.info("[ForgotPassword] Código enviado via Telegram para usuário {}", user.id)
         } else {
             emailService.sendPasswordResetCode(user.email, code)

@@ -59,7 +59,7 @@ class SendPaymentConfirmedNotificationUseCase(
 
         try {
             val providerMessageId = telegramGateway.sendPaymentConfirmedMessage(
-                winner.telegramChatId,
+                winner.telegramChatId!!,
                 PaymentConfirmedTelegramPayload(
                     winnerName = winner.name,
                     auctionTitle = command.auctionTitle,
