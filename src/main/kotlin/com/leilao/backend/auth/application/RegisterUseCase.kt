@@ -1,6 +1,7 @@
 package com.leilao.backend.auth.application
 
 import com.leilao.backend.auth.api.dto.RegisterRequest
+import com.leilao.backend.shared.email.EmailService
 import com.leilao.backend.shared.exception.ConflictException
 import com.leilao.backend.users.domain.User
 import com.leilao.backend.users.domain.UserAddress
@@ -12,7 +13,9 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class RegisterUseCase(
     private val userRepository: UserRepository,
-    private val passwordEncoder: PasswordEncoder
+    private val passwordEncoder: PasswordEncoder,
+    private val emailVerificationStore: EmailVerificationStore,
+    private val emailService: EmailService
 ) {
 
     @Transactional
@@ -25,7 +28,8 @@ class RegisterUseCase(
             name = request.name,
             email = request.email.lowercase().trim(),
             passwordHash = passwordEncoder.encode(request.password),
-            phoneNumber = request.phoneNumber
+            phoneNumber = request.phoneNumber,
+            emailVerified = false
         )
 
         val address = UserAddress(
@@ -39,6 +43,11 @@ class RegisterUseCase(
         )
         user.address = address
 
-        return userRepository.save(user)
+        val saved = userRepository.save(user)
+
+        val code = emailVerificationStore.generate(saved.email)
+        emailService.sendEmailVerification(saved.email, code)
+
+        return saved
     }
 }

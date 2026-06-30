@@ -31,10 +31,8 @@ class SecurityConfig(
                 auth
                     // Public endpoints
                     .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/verify-email").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/auth/telegram/request-verification").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/auth/telegram/check-verification").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/telegram/webhook").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/auctions").permitAll()

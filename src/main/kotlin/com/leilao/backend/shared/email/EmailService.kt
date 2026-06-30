@@ -14,6 +14,24 @@ class EmailService(
 
     private val log = LoggerFactory.getLogger(EmailService::class.java)
 
+    fun sendEmailVerification(email: String, code: String) {
+        val message = SimpleMailMessage()
+        message.from = fromAddress
+        message.setTo(email)
+        message.subject = "Bid Toys - Confirme seu e-mail"
+        message.text = """
+            Olá!
+
+            Seu código para confirmar o cadastro na Bid Toys é: $code
+
+            Válido por 24 horas.
+
+            Se você não criou uma conta, ignore este e-mail.
+        """.trimIndent()
+        mailSender.send(message)
+        log.info("[Email] Código de verificação enviado para {}", email)
+    }
+
     fun sendPasswordResetCode(email: String, code: String) {
         val message = SimpleMailMessage()
         message.from = fromAddress
