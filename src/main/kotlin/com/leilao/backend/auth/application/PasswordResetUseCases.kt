@@ -1,6 +1,5 @@
 package com.leilao.backend.auth.application
 
-import com.leilao.backend.notifications.infrastructure.telegram.TelegramGateway
 import com.leilao.backend.shared.email.EmailService
 import com.leilao.backend.shared.exception.BusinessException
 import com.leilao.backend.users.infrastructure.UserRepository
@@ -15,7 +14,6 @@ import kotlin.random.Random
 class ForgotPasswordUseCase(
     private val userRepository: UserRepository,
     private val passwordResetStore: PasswordResetStore,
-    private val telegramGateway: TelegramGateway,
     private val emailService: EmailService
 ) {
     private val log = LoggerFactory.getLogger(ForgotPasswordUseCase::class.java)
@@ -31,14 +29,35 @@ class ForgotPasswordUseCase(
 
         val code = String.format("%06d", Random.nextInt(0, 1_000_000))
         passwordResetStore.save(user.email, code)
+        emailService.sendPasswordResetCode(user.email, code)
+        log.info("[ForgotPassword] Código enviado via e-mail para usuário {}", user.id)
+    }
+}
 
-        if (user.telegramChatId != null) {
-            telegramGateway.sendPasswordResetCode(user.telegramChatId!!, code)
-            log.info("[ForgotPassword] Código enviado via Telegram para usuário {}", user.id)
-        } else {
-            emailService.sendPasswordResetCode(user.email, code)
-            log.info("[ForgotPassword] Código enviado via e-mail para usuário {}", user.id)
+@Service
+class ResetPasswordUseCase(
+    private val userRepository: UserRepository,
+    private val passwordResetStore: PasswordResetStore,
+    private val passwordEncoder: PasswordEncoder
+) {
+    @Transactional
+    fun execute(email: String, code: String, newPassword: String) {
+        if (!passwordResetStore.verify(email, code)) {
+            throw BusinessException(
+                "Código inválido ou expirado",
+                "INVALID_RESET_CODE",
+                HttpStatus.UNPROCESSABLE_ENTITY
+            )
         }
+
+        val user = userRepository.findByEmail(email.lowercase().trim())
+            .orElseThrow {
+                BusinessException("Usuário não encontrado", "USER_NOT_FOUND", HttpStatus.NOT_FOUND)
+            }
+
+        user.passwordHash = passwordEncoder.encode(newPassword)
+        userRepository.save(user)
+        passwordResetStore.remove(email)
     }
 }
 

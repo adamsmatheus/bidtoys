@@ -49,9 +49,13 @@ data class RegisterRequest(
     val address: AddressRequest
 )
 
-data class RequestTelegramVerificationRequest(
-    @field:NotBlank(message = "Número de telefone é obrigatório")
-    val phoneNumber: String
+data class VerifyEmailRequest(
+    @field:NotBlank(message = "E-mail é obrigatório")
+    @field:Email(message = "E-mail inválido")
+    val email: String,
+
+    @field:NotBlank(message = "Código é obrigatório")
+    val code: String
 )
 
 data class LoginRequest(

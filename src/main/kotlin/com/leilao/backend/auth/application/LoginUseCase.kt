@@ -32,6 +32,14 @@ class LoginUseCase(
             throw BusinessException("Usuário bloqueado", "USER_BLOCKED", HttpStatus.FORBIDDEN)
         }
 
+        if (!user.emailVerified) {
+            throw BusinessException(
+                "Confirme seu e-mail antes de fazer login",
+                "EMAIL_NOT_VERIFIED",
+                HttpStatus.FORBIDDEN
+            )
+        }
+
         val token = jwtTokenProvider.generateToken(user.id, user.email, user.role.name)
         return LoginResponse(token = token)
     }

@@ -36,6 +36,9 @@ class User(
     @Column(name = "status", nullable = false, length = 20)
     var status: UserStatus = UserStatus.ACTIVE,
 
+    @Column(name = "email_verified", nullable = false)
+    var emailVerified: Boolean = false,
+
     @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL])
     var address: UserAddress? = null
 
