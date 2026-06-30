@@ -60,3 +60,12 @@ data class UserResponse(
         )
     }
 }
+
+data class UpdateAddressRequest(
+    @field:NotBlank val cep: String,
+    @field:NotBlank val street: String,
+    @field:NotBlank val city: String,
+    @field:NotBlank val state: String,
+    @field:NotBlank val number: String,
+    val complement: String? = null
+)

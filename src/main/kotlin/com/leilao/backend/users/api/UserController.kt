@@ -1,10 +1,12 @@
 package com.leilao.backend.users.api
 
 import com.leilao.backend.shared.security.UserPrincipal
+import com.leilao.backend.users.api.dto.UpdateAddressRequest
 import com.leilao.backend.users.api.dto.UpdateUserRequest
 import com.leilao.backend.users.api.dto.UserResponse
 import com.leilao.backend.users.application.DeleteUserUseCase
 import com.leilao.backend.users.application.GetUserUseCase
+import com.leilao.backend.users.application.UpdateAddressUseCase
 import com.leilao.backend.users.application.UpdateUserUseCase
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -29,6 +31,7 @@ import java.util.UUID
 class UserController(
     private val getUserUseCase: GetUserUseCase,
     private val updateUserUseCase: UpdateUserUseCase,
+    private val updateAddressUseCase: UpdateAddressUseCase,
     private val deleteUserUseCase: DeleteUserUseCase
 ) {
 
@@ -36,6 +39,13 @@ class UserController(
     @Operation(summary = "Retorna o perfil do usuário autenticado")
     fun me(@AuthenticationPrincipal principal: UserPrincipal): UserResponse =
         UserResponse.from(getUserUseCase.execute(principal.id))
+
+    @PutMapping("/me/address")
+    @Operation(summary = "Atualiza o endereço do usuário autenticado")
+    fun updateAddress(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @Valid @RequestBody request: UpdateAddressRequest
+    ): UserResponse = UserResponse.from(updateAddressUseCase.execute(principal.id, request))
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
