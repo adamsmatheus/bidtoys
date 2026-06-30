@@ -36,7 +36,8 @@ class AuctionDomainTest {
         val auction = createAuction()
         assertEquals(AuctionStatus.DRAFT, auction.status)
         assertEquals(500, auction.currentPriceAmount)
-        assertEquals(550, auction.nextMinimumBid())
+        // Sem lances, nextMinimumBid retorna o próprio preço atual (incremento só entra após o primeiro lance)
+        assertEquals(500, auction.nextMinimumBid())
     }
 
     @Test

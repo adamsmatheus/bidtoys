@@ -8,4 +8,6 @@ import java.util.UUID
 @Repository
 interface AuctionStatusHistoryRepository : JpaRepository<AuctionStatusHistory, UUID> {
     fun findByAuction_IdOrderByCreatedAtAsc(auctionId: UUID): List<AuctionStatusHistory>
+
+    fun deleteByAuction_Id(auctionId: UUID)
 }

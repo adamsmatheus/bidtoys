@@ -2,9 +2,9 @@ package com.leilao.backend.auth
 
 import com.leilao.backend.auth.api.dto.AddressRequest
 import com.leilao.backend.auth.api.dto.RegisterRequest
+import com.leilao.backend.auth.application.EmailVerificationStore
 import com.leilao.backend.auth.application.RegisterUseCase
-import com.leilao.backend.auth.application.TelegramVerificationStore
-import com.leilao.backend.shared.exception.BusinessException
+import com.leilao.backend.shared.email.EmailService
 import com.leilao.backend.shared.exception.ConflictException
 import com.leilao.backend.users.infrastructure.UserRepository
 import io.mockk.every
@@ -21,9 +21,10 @@ class RegisterUseCaseTest {
 
     private val userRepository = mockk<UserRepository>()
     private val passwordEncoder = mockk<PasswordEncoder>()
-    private val verificationStore = mockk<TelegramVerificationStore>()
+    private val emailVerificationStore = mockk<EmailVerificationStore>()
+    private val emailService = mockk<EmailService>()
 
-    private val useCase = RegisterUseCase(userRepository, passwordEncoder, verificationStore)
+    private val useCase = RegisterUseCase(userRepository, passwordEncoder, emailVerificationStore, emailService)
 
     private val validAddress = AddressRequest(
         cep = "01310-100",
@@ -33,23 +34,21 @@ class RegisterUseCaseTest {
         number = "1000"
     )
 
-    private val validToken = "abc-token-123"
-
     private val validRequest = RegisterRequest(
         name = "João Silva",
         email = "joao@example.com",
         password = "senha123",
-        verificationToken = validToken,
+        phoneNumber = "+5511999999999",
         address = validAddress
     )
 
     @BeforeEach
     fun setup() {
-        every { verificationStore.getIfVerified(validToken) } returns Pair("+5511999999999", 123456789L)
         every { userRepository.existsByEmail(any()) } returns false
         every { passwordEncoder.encode(any()) } returns "hashed_password"
         every { userRepository.save(any()) } answers { firstArg() }
-        justRun { verificationStore.remove(any()) }
+        every { emailVerificationStore.generate(any()) } returns "123456"
+        justRun { emailService.sendEmailVerification(any(), any()) }
     }
 
     @Test
@@ -59,9 +58,7 @@ class RegisterUseCaseTest {
         assertEquals("joao@example.com", result.email)
         assertEquals("João Silva", result.name)
         assertEquals("+5511999999999", result.phoneNumber)
-        assertEquals(123456789L, result.telegramChatId)
         verify { userRepository.save(any()) }
-        verify { verificationStore.remove(validToken) }
     }
 
     @Test
@@ -83,15 +80,6 @@ class RegisterUseCaseTest {
     }
 
     @Test
-    fun `deve lançar BusinessException quando token de verificação for inválido`() {
-        every { verificationStore.getIfVerified(validToken) } returns null
-
-        assertThrows<BusinessException> {
-            useCase.execute(validRequest)
-        }
-    }
-
-    @Test
     fun `deve lançar ConflictException quando email já estiver cadastrado`() {
         every { userRepository.existsByEmail(validRequest.email) } returns true
 
@@ -101,9 +89,10 @@ class RegisterUseCaseTest {
     }
 
     @Test
-    fun `deve remover token de verificação após cadastro bem-sucedido`() {
+    fun `deve enviar email de verificação após cadastro`() {
         useCase.execute(validRequest)
 
-        verify { verificationStore.remove(validToken) }
+        verify { emailVerificationStore.generate("joao@example.com") }
+        verify { emailService.sendEmailVerification("joao@example.com", "123456") }
     }
 }

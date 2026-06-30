@@ -9,4 +9,6 @@ import java.util.UUID
 @Repository
 interface NotificationRepository : JpaRepository<Notification, UUID> {
     fun findByAuctionIdAndStatus(auctionId: UUID, status: NotificationStatus): List<Notification>
+
+    fun deleteByAuctionId(auctionId: UUID)
 }

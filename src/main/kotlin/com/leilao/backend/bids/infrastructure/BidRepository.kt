@@ -19,5 +19,7 @@ interface BidRepository : JpaRepository<Bid, UUID> {
     )
     fun findByAuction_IdOrderByCreatedAtDesc(auctionId: UUID, pageable: Pageable): Page<Bid>
 
+    fun deleteByAuction_Id(auctionId: UUID)
+
     fun findByRequestId(requestId: String): Optional<Bid>
 }

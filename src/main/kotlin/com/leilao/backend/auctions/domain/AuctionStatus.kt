@@ -23,6 +23,8 @@ enum class AuctionStatus {
 
     fun canCancel() = this == DRAFT || this == REJECTED || this == READY_TO_START
 
+    fun canDelete() = this in setOf(DRAFT, PENDING_APPROVAL, REJECTED, READY_TO_START, ACTIVE, CANCELLED)
+
     fun isActive() = this == ACTIVE
 
     fun isTerminal() = this == CANCELLED || this == FINISHED_WITH_WINNER || this == FINISHED_NO_BIDS

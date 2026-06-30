@@ -24,10 +24,12 @@ class ListBuyersUseCase(
         return auctions
             .groupBy { it.winnerUserId!! }
             .map { (winnerId, winnerAuctions) ->
-                val buyerName = usersById[winnerId]?.name ?: "Usuário desconhecido"
+                val buyer = usersById[winnerId]
                 BuyerSummaryResponse(
                     buyerId = winnerId,
-                    buyerName = buyerName,
+                    buyerName = buyer?.name ?: "Usuário desconhecido",
+                    buyerEmail = buyer?.email ?: "",
+                    buyerPhone = buyer?.phoneNumber,
                     auctionCount = winnerAuctions.size,
                     totalAmount = winnerAuctions.sumOf { it.currentPriceAmount },
                     auctions = winnerAuctions

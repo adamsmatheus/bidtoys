@@ -11,4 +11,6 @@ import java.util.UUID
 @Repository
 interface AdminAlertRepository : JpaRepository<AdminAlert, UUID> {
     fun findByStatus(status: AdminAlertStatus, pageable: Pageable): Page<AdminAlert>
+
+    fun deleteByAuctionId(auctionId: UUID)
 }

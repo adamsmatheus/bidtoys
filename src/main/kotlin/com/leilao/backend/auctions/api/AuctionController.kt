@@ -13,6 +13,7 @@ import com.leilao.backend.auctions.application.CancelAuctionUseCase
 import com.leilao.backend.auctions.application.ConfirmPaymentUseCase
 import com.leilao.backend.auctions.application.CreateAuctionUseCase
 import com.leilao.backend.auctions.application.DeclarePaymentUseCase
+import com.leilao.backend.auctions.application.DeleteAuctionUseCase
 import com.leilao.backend.auctions.application.DeleteAuctionImageUseCase
 import com.leilao.backend.auctions.application.GetAuctionUseCase
 import com.leilao.backend.auctions.application.ListAuctionsUseCase
@@ -63,6 +64,7 @@ class AuctionController(
     private val submitForApprovalUseCase: SubmitForApprovalUseCase,
     private val startAuctionUseCase: StartAuctionUseCase,
     private val cancelAuctionUseCase: CancelAuctionUseCase,
+    private val deleteAuctionUseCase: DeleteAuctionUseCase,
     private val declarePaymentUseCase: DeclarePaymentUseCase,
     private val confirmPaymentUseCase: ConfirmPaymentUseCase,
     private val updateShipmentStatusUseCase: UpdateShipmentStatusUseCase,
@@ -200,6 +202,16 @@ class AuctionController(
         @AuthenticationPrincipal principal: UserPrincipal
     ): AuctionResponse {
         return AuctionResponse.from(cancelAuctionUseCase.execute(id, principal.id, request?.reason))
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Exclui um leilão (não permitido quando finalizado)")
+    fun delete(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ) {
+        deleteAuctionUseCase.execute(id, principal.id)
     }
 
     @GetMapping("/{id}")

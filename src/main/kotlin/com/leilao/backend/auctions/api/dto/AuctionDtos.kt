@@ -158,6 +158,8 @@ data class UpdateShipmentStatusRequest(
 data class BuyerSummaryResponse(
     val buyerId: UUID,
     val buyerName: String,
+    val buyerEmail: String,
+    val buyerPhone: String?,
     val auctionCount: Int,
     val totalAmount: Int,
     val auctions: List<BuyerAuctionItem>
