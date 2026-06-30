@@ -41,8 +41,8 @@ data class RegisterRequest(
     @field:Size(min = 6, message = "Senha deve ter no mínimo 6 caracteres")
     val password: String,
 
-    @field:NotBlank(message = "Token de verificação é obrigatório")
-    val verificationToken: String,
+    @field:NotBlank(message = "Número de telefone é obrigatório")
+    val phoneNumber: String,
 
     @field:NotNull(message = "Endereço é obrigatório")
     @field:Valid
