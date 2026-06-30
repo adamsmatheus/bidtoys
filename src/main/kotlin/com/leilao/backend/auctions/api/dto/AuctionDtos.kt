@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
+import com.leilao.backend.users.api.dto.AddressResponse
 import java.time.Instant
 import java.util.UUID
 
@@ -160,6 +161,7 @@ data class BuyerSummaryResponse(
     val buyerName: String,
     val buyerEmail: String,
     val buyerPhone: String?,
+    val buyerAddress: AddressResponse?,
     val auctionCount: Int,
     val totalAmount: Int,
     val auctions: List<BuyerAuctionItem>

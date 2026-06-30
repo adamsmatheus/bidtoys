@@ -3,6 +3,8 @@ package com.leilao.backend.auctions.application
 import com.leilao.backend.auctions.api.dto.BuyerAuctionItem
 import com.leilao.backend.auctions.api.dto.BuyerSummaryResponse
 import com.leilao.backend.auctions.infrastructure.AuctionRepository
+import com.leilao.backend.users.api.dto.AddressResponse
+import com.leilao.backend.users.infrastructure.UserAddressRepository
 import com.leilao.backend.users.infrastructure.UserRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -11,7 +13,8 @@ import java.util.UUID
 @Service
 class ListBuyersUseCase(
     private val auctionRepository: AuctionRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val userAddressRepository: UserAddressRepository
 ) {
 
     @Transactional(readOnly = true)
@@ -20,16 +23,21 @@ class ListBuyersUseCase(
 
         val winnerIds = auctions.mapNotNull { it.winnerUserId }.distinct()
         val usersById = userRepository.findAllById(winnerIds).associateBy { it.id }
+        val addressesByUserId = winnerIds
+            .mapNotNull { id -> userAddressRepository.findByUserId(id).orElse(null)?.let { id to it } }
+            .toMap()
 
         return auctions
             .groupBy { it.winnerUserId!! }
             .map { (winnerId, winnerAuctions) ->
                 val buyer = usersById[winnerId]
+                val address = addressesByUserId[winnerId]
                 BuyerSummaryResponse(
                     buyerId = winnerId,
                     buyerName = buyer?.name ?: "Usuário desconhecido",
                     buyerEmail = buyer?.email ?: "",
                     buyerPhone = buyer?.phoneNumber,
+                    buyerAddress = address?.let { AddressResponse.from(it) },
                     auctionCount = winnerAuctions.size,
                     totalAmount = winnerAuctions.sumOf { it.currentPriceAmount },
                     auctions = winnerAuctions
