@@ -10,9 +10,9 @@ spring:
     properties:
       mail:
         smtp:
-          auth: false
+          auth: ${MAIL_SMTP_AUTH:false}
           starttls:
-            enable: false
+            enable: ${MAIL_SMTP_STARTTLS:false}
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/leilao}
