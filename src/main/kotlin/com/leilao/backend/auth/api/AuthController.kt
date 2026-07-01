@@ -5,17 +5,24 @@ import com.leilao.backend.auth.api.dto.LoginRequest
 import com.leilao.backend.auth.api.dto.LoginResponse
 import com.leilao.backend.auth.api.dto.RegisterRequest
 import com.leilao.backend.auth.api.dto.ResetPasswordRequest
+import com.leilao.backend.auth.api.dto.TelegramCheckResponse
+import com.leilao.backend.auth.api.dto.TelegramVerificationRequest
 import com.leilao.backend.auth.api.dto.VerifyEmailRequest
 import com.leilao.backend.auth.application.ForgotPasswordUseCase
 import com.leilao.backend.auth.application.LoginUseCase
 import com.leilao.backend.auth.application.RegisterUseCase
+import com.leilao.backend.auth.application.RequestTelegramVerificationUseCase
 import com.leilao.backend.auth.application.ResetPasswordUseCase
+import com.leilao.backend.auth.application.TelegramVerificationResponse
+import com.leilao.backend.auth.application.TelegramVerificationStore
 import com.leilao.backend.auth.application.VerifyEmailUseCase
 import com.leilao.backend.users.api.dto.UserResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -30,7 +37,9 @@ class AuthController(
     private val loginUseCase: LoginUseCase,
     private val verifyEmailUseCase: VerifyEmailUseCase,
     private val forgotPasswordUseCase: ForgotPasswordUseCase,
-    private val resetPasswordUseCase: ResetPasswordUseCase
+    private val resetPasswordUseCase: ResetPasswordUseCase,
+    private val requestTelegramVerificationUseCase: RequestTelegramVerificationUseCase,
+    private val telegramVerificationStore: TelegramVerificationStore
 ) {
 
     @PostMapping("/register")
@@ -66,5 +75,19 @@ class AuthController(
     @Operation(summary = "Redefine a senha usando o código recebido")
     fun resetPassword(@Valid @RequestBody request: ResetPasswordRequest) {
         resetPasswordUseCase.execute(request.email, request.code, request.newPassword)
+    }
+
+    @PostMapping("/telegram/request-verification")
+    @Operation(summary = "Solicita verificação de celular via Telegram e retorna o deep link")
+    fun requestTelegramVerification(
+        @Valid @RequestBody request: TelegramVerificationRequest
+    ): TelegramVerificationResponse {
+        return requestTelegramVerificationUseCase.execute(request.phoneNumber)
+    }
+
+    @GetMapping("/telegram/check/{token}")
+    @Operation(summary = "Verifica se o token do Telegram foi confirmado pelo usuário")
+    fun checkTelegramVerification(@PathVariable token: String): TelegramCheckResponse {
+        return TelegramCheckResponse(verified = telegramVerificationStore.isVerified(token))
     }
 }

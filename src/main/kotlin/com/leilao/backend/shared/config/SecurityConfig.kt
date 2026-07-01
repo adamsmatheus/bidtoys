@@ -35,6 +35,9 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/telegram/request-verification").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/auth/telegram/check/**").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/telegram/webhook").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/auctions").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/auctions/{id}").permitAll()
                     // WebSocket

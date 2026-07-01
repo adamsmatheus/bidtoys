@@ -41,13 +41,20 @@ data class RegisterRequest(
     @field:Size(min = 6, message = "Senha deve ter no mínimo 6 caracteres")
     val password: String,
 
-    @field:NotBlank(message = "Número de telefone é obrigatório")
-    val phoneNumber: String,
+    @field:NotBlank(message = "Token de verificação do Telegram é obrigatório")
+    val telegramToken: String,
 
     @field:NotNull(message = "Endereço é obrigatório")
     @field:Valid
     val address: AddressRequest
 )
+
+data class TelegramVerificationRequest(
+    @field:NotBlank(message = "Número de telefone é obrigatório")
+    val phoneNumber: String
+)
+
+data class TelegramCheckResponse(val verified: Boolean)
 
 data class VerifyEmailRequest(
     @field:NotBlank(message = "E-mail é obrigatório")
