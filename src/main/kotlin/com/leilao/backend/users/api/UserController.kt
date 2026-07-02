@@ -6,6 +6,9 @@ import com.leilao.backend.users.api.dto.UpdateUserRequest
 import com.leilao.backend.users.api.dto.UserResponse
 import com.leilao.backend.users.application.DeleteUserUseCase
 import com.leilao.backend.users.application.GetUserUseCase
+import com.leilao.backend.users.application.RequestTelegramLinkUseCase
+import com.leilao.backend.users.application.TelegramLinkResponse
+import com.leilao.backend.users.application.TelegramLinkStore
 import com.leilao.backend.users.application.UpdateAddressUseCase
 import com.leilao.backend.users.application.UpdateUserUseCase
 import io.swagger.v3.oas.annotations.Operation
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -32,7 +36,9 @@ class UserController(
     private val getUserUseCase: GetUserUseCase,
     private val updateUserUseCase: UpdateUserUseCase,
     private val updateAddressUseCase: UpdateAddressUseCase,
-    private val deleteUserUseCase: DeleteUserUseCase
+    private val deleteUserUseCase: DeleteUserUseCase,
+    private val requestTelegramLinkUseCase: RequestTelegramLinkUseCase,
+    private val telegramLinkStore: TelegramLinkStore
 ) {
 
     @GetMapping("/me")
@@ -68,6 +74,16 @@ class UserController(
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Promove um usuário para administrador")
     fun promote(@PathVariable id: UUID): UserResponse = UserResponse.from(updateUserUseCase.promoteToAdmin(id))
+
+    @PostMapping("/me/telegram/request-link")
+    @Operation(summary = "Gera um deep link para vincular Telegram ao perfil")
+    fun requestTelegramLink(@AuthenticationPrincipal principal: UserPrincipal): TelegramLinkResponse =
+        requestTelegramLinkUseCase.execute(principal.id)
+
+    @GetMapping("/me/telegram/link-status/{token}")
+    @Operation(summary = "Verifica se o Telegram foi vinculado via token")
+    fun checkTelegramLinkStatus(@PathVariable token: String): Map<String, Boolean> =
+        mapOf("linked" to telegramLinkStore.isLinked(token))
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")

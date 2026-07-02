@@ -2,6 +2,8 @@ package com.leilao.backend.auth.api
 
 import com.leilao.backend.auth.application.TelegramVerificationStore
 import com.leilao.backend.notifications.infrastructure.telegram.TelegramGateway
+import com.leilao.backend.users.application.TelegramLinkStore
+import com.leilao.backend.users.infrastructure.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.ResponseEntity
@@ -15,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/telegram")
 class TelegramWebhookController(
     private val verificationStore: TelegramVerificationStore,
+    private val telegramLinkStore: TelegramLinkStore,
+    private val userRepository: UserRepository,
     private val telegramGateway: TelegramGateway,
     @Value("\${app.telegram.webhook-secret:}") private val webhookSecret: String
 ) {
@@ -49,13 +53,31 @@ class TelegramWebhookController(
         val text = message["text"] as? String ?: return
 
         if (text.startsWith("/start ")) {
-            val token = text.removePrefix("/start ").trim()
-            if (verificationStore.markVerified(token, chatId)) {
-                telegramGateway.sendMessage(chatId, "Numero verificado com sucesso! Volte ao app para completar o cadastro.")
-                log.info("[Telegram Webhook] Token verificado para chatId={}", chatId)
+            val param = text.removePrefix("/start ").trim()
+
+            if (param.startsWith("link_")) {
+                val token = param.removePrefix("link_")
+                val userId = telegramLinkStore.markLinked(token, chatId)
+                if (userId != null) {
+                    userRepository.findById(userId).ifPresent { user ->
+                        user.telegramChatId = chatId
+                        userRepository.save(user)
+                    }
+                    telegramGateway.sendMessage(chatId, "Telegram vinculado com sucesso! Voce vai receber notificacoes dos seus leiloes por aqui.")
+                    log.info("[Telegram Webhook] Telegram vinculado para userId={} chatId={}", userId, chatId)
+                } else {
+                    telegramGateway.sendMessage(chatId, "Link invalido ou expirado. Volte ao app e solicite um novo link.")
+                    log.warn("[Telegram Webhook] Token de vinculacao invalido para chatId={}", chatId)
+                }
             } else {
-                telegramGateway.sendMessage(chatId, "Link invalido ou expirado. Volte ao app e solicite um novo link de verificacao.")
-                log.warn("[Telegram Webhook] Token invalido ou expirado para chatId={}", chatId)
+                val token = param
+                if (verificationStore.markVerified(token, chatId)) {
+                    telegramGateway.sendMessage(chatId, "Numero verificado com sucesso! Volte ao app para completar o cadastro.")
+                    log.info("[Telegram Webhook] Token verificado para chatId={}", chatId)
+                } else {
+                    telegramGateway.sendMessage(chatId, "Link invalido ou expirado. Volte ao app e solicite um novo link de verificacao.")
+                    log.warn("[Telegram Webhook] Token invalido ou expirado para chatId={}", chatId)
+                }
             }
         }
     }
