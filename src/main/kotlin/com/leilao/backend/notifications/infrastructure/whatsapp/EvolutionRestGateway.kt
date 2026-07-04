@@ -22,15 +22,40 @@ class EvolutionRestGateway(
     private val restTemplate = RestTemplate()
 
     override fun sendVerificationCode(phoneNumber: String, code: String) {
-        val text = """
-            *Bid Toys — Verificação de celular*
-
-            Seu código de verificação: *$code*
-
-            Válido por 10 minutos. Não compartilhe com ninguém.
-        """.trimIndent()
+        val text = "Bid Toys — seu código de verificação: *$code*\n\nVálido por 10 minutos. Não compartilhe com ninguém."
         send(phoneNumber, text)
-        log.info("[WhatsApp] Código de verificação enviado para número={}", phoneNumber)
+        log.info("[Evolution WhatsApp] Código de verificação enviado para número={}", phoneNumber)
+    }
+
+    override fun sendPasswordResetCode(phoneNumber: String, code: String) {
+        val text = "Bid Toys — seu código de recuperação de senha: *$code*\n\nVálido por 10 minutos. Não compartilhe com ninguém."
+        send(phoneNumber, text)
+        log.info("[Evolution WhatsApp] Código de reset enviado para número={}", phoneNumber)
+    }
+
+    override fun sendOutbidNotification(phoneNumber: String, name: String, auctionTitle: String, newAmount: String) {
+        val text = "Olá, $name!\n\nSeu lance no leilão *$auctionTitle* foi superado.\n\nNovo lance líder: R$ $newAmount\n\nAcesse a Bid Toys para dar um novo lance!"
+        send(phoneNumber, text)
+        log.info("[Evolution WhatsApp] Notificação de lance superado enviada para número={}", phoneNumber)
+    }
+
+    override fun sendWinnerNotification(phoneNumber: String, name: String, auctionTitle: String, amount: String, pixKey: String?) {
+        val pixInfo = if (pixKey != null) "\nChave PIX do vendedor: $pixKey" else ""
+        val text = "Parabéns, $name!\n\nVocê venceu o leilão *$auctionTitle*\nValor: R$ $amount$pixInfo\n\nAcesse a Bid Toys para confirmar o pagamento."
+        send(phoneNumber, text)
+        log.info("[Evolution WhatsApp] Notificação de vencedor enviada para número={}", phoneNumber)
+    }
+
+    override fun sendPaymentDeclaredNotification(phoneNumber: String, name: String, auctionTitle: String, amount: String) {
+        val text = "Olá, $name!\n\nO vencedor declarou o pagamento do leilão *$auctionTitle*\nValor: R$ $amount\n\nAcesse a Bid Toys para confirmar o recebimento."
+        send(phoneNumber, text)
+        log.info("[Evolution WhatsApp] Notificação de pagamento declarado enviada para número={}", phoneNumber)
+    }
+
+    override fun sendPaymentConfirmedNotification(phoneNumber: String, name: String, auctionTitle: String, amount: String) {
+        val text = "Olá, $name!\n\nO pagamento do leilão *$auctionTitle* foi confirmado.\nValor: R$ $amount\n\nObrigado por usar a Bid Toys!"
+        send(phoneNumber, text)
+        log.info("[Evolution WhatsApp] Notificação de pagamento confirmado enviada para número={}", phoneNumber)
     }
 
     override fun sendMessage(phoneNumber: String, text: String) {
