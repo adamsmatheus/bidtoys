@@ -8,14 +8,19 @@ import com.leilao.backend.auth.api.dto.ResetPasswordRequest
 import com.leilao.backend.auth.api.dto.TelegramCheckResponse
 import com.leilao.backend.auth.api.dto.TelegramVerificationRequest
 import com.leilao.backend.auth.api.dto.VerifyEmailRequest
+import com.leilao.backend.auth.api.dto.WhatsAppVerificationRequest
+import com.leilao.backend.auth.api.dto.WhatsAppVerifyCodeRequest
+import com.leilao.backend.auth.application.WhatsAppVerifyCodeResponse
 import com.leilao.backend.auth.application.ForgotPasswordUseCase
 import com.leilao.backend.auth.application.LoginUseCase
 import com.leilao.backend.auth.application.RegisterUseCase
 import com.leilao.backend.auth.application.RequestTelegramVerificationUseCase
+import com.leilao.backend.auth.application.RequestWhatsAppVerificationUseCase
 import com.leilao.backend.auth.application.ResetPasswordUseCase
 import com.leilao.backend.auth.application.TelegramVerificationResponse
 import com.leilao.backend.auth.application.TelegramVerificationStore
 import com.leilao.backend.auth.application.VerifyEmailUseCase
+import com.leilao.backend.auth.application.VerifyWhatsAppCodeUseCase
 import com.leilao.backend.users.api.dto.UserResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -39,7 +44,9 @@ class AuthController(
     private val forgotPasswordUseCase: ForgotPasswordUseCase,
     private val resetPasswordUseCase: ResetPasswordUseCase,
     private val requestTelegramVerificationUseCase: RequestTelegramVerificationUseCase,
-    private val telegramVerificationStore: TelegramVerificationStore
+    private val telegramVerificationStore: TelegramVerificationStore,
+    private val requestWhatsAppVerificationUseCase: RequestWhatsAppVerificationUseCase,
+    private val verifyWhatsAppCodeUseCase: VerifyWhatsAppCodeUseCase
 ) {
 
     @PostMapping("/register")
@@ -90,4 +97,16 @@ class AuthController(
     fun checkTelegramVerification(@PathVariable token: String): TelegramCheckResponse {
         return TelegramCheckResponse(verified = telegramVerificationStore.isVerified(token))
     }
+
+    @PostMapping("/whatsapp/request-verification")
+    @Operation(summary = "Envia código de verificação via WhatsApp para o número informado")
+    fun requestWhatsAppVerification(
+        @Valid @RequestBody request: WhatsAppVerificationRequest
+    ) = requestWhatsAppVerificationUseCase.execute(request.phoneNumber)
+
+    @PostMapping("/whatsapp/verify-code")
+    @Operation(summary = "Confirma o código de verificação recebido via WhatsApp")
+    fun verifyWhatsAppCode(
+        @Valid @RequestBody request: WhatsAppVerifyCodeRequest
+    ): WhatsAppVerifyCodeResponse = verifyWhatsAppCodeUseCase.execute(request.token, request.code)
 }

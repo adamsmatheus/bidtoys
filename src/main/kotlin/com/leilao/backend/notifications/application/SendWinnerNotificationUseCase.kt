@@ -11,6 +11,8 @@ import com.leilao.backend.notifications.infrastructure.NotificationRepository
 import com.leilao.backend.notifications.infrastructure.telegram.TelegramGateway
 import com.leilao.backend.notifications.infrastructure.telegram.TelegramSendException
 import com.leilao.backend.notifications.infrastructure.telegram.WinnerTelegramPayload
+import com.leilao.backend.notifications.infrastructure.whatsapp.EvolutionGateway
+import com.leilao.backend.notifications.infrastructure.whatsapp.EvolutionSendException
 import com.leilao.backend.auctions.infrastructure.AuctionRepository
 import com.leilao.backend.companies.infrastructure.CompanyRepository
 import com.leilao.backend.users.infrastructure.UserRepository
@@ -34,6 +36,7 @@ class SendWinnerNotificationUseCase(
     private val auctionRepository: AuctionRepository,
     private val companyRepository: CompanyRepository,
     private val telegramGateway: TelegramGateway,
+    private val whatsAppGateway: EvolutionGateway,
     private val objectMapper: ObjectMapper
 ) {
 
@@ -50,7 +53,46 @@ class SendWinnerNotificationUseCase(
 
         val payloadJson = objectMapper.writeValueAsString(command)
 
-        val notification = notificationRepository.save(
+        val sellerPixKey = auctionRepository.findById(command.auctionId)
+            .map { auction -> companyRepository.findByUserId(auction.seller.id).orElse(null)?.pixKey }
+            .orElse(null)
+
+        val formattedAmount = formatBRL(command.finalAmount)
+
+        // --- WhatsApp (best-effort) ---
+        val whatsAppNotification = notificationRepository.save(
+            Notification(
+                userId = command.winnerUserId,
+                auctionId = command.auctionId,
+                type = NotificationType.WINNER_NOTIFICATION,
+                channel = NotificationChannel.WHATSAPP,
+                payloadJson = payloadJson
+            )
+        )
+        try {
+            whatsAppGateway.sendWinnerNotification(
+                phoneNumber = winner.phoneNumber,
+                name = winner.name,
+                auctionTitle = command.auctionTitle,
+                amount = formattedAmount,
+                pixKey = sellerPixKey
+            )
+            whatsAppNotification.markSent()
+            notificationRepository.save(whatsAppNotification)
+            log.info("Notificação WhatsApp de vencedor enviada para leilão {}", command.auctionId)
+        } catch (ex: EvolutionSendException) {
+            log.error("Falha ao enviar WhatsApp para vencedor do leilão {}: {}", command.auctionId, ex.message)
+            whatsAppNotification.markFailed(ex.message ?: "Erro desconhecido")
+            notificationRepository.save(whatsAppNotification)
+        }
+
+        // --- Telegram (best-effort) ---
+        if (winner.telegramChatId == null) {
+            log.info("Vencedor {} não tem Telegram conectado, pulando", command.winnerUserId)
+            return
+        }
+
+        val telegramNotification = notificationRepository.save(
             Notification(
                 userId = command.winnerUserId,
                 auctionId = command.auctionId,
@@ -59,44 +101,25 @@ class SendWinnerNotificationUseCase(
                 payloadJson = payloadJson
             )
         )
-
-        if (winner.telegramChatId == null) {
-            log.warn("Vencedor {} não tem Telegram conectado", command.winnerUserId)
-            notification.markFailed("Telegram não conectado")
-            notificationRepository.save(notification)
-            createAdminAlert(command, "Vencedor sem Telegram conectado: ${winner.email}")
-            return
-        }
-
-        val sellerPixKey = auctionRepository.findById(command.auctionId)
-            .map { auction -> companyRepository.findByUserId(auction.seller.id).orElse(null)?.pixKey }
-            .orElse(null)
-
         try {
-            val messagePayload = WinnerTelegramPayload(
-                recipientName = winner.name,
-                auctionTitle = command.auctionTitle,
-                winningAmount = command.finalAmount,
-                sellerPixKey = sellerPixKey
+            val providerMessageId = telegramGateway.sendWinnerMessage(
+                winner.telegramChatId!!,
+                WinnerTelegramPayload(
+                    recipientName = winner.name,
+                    auctionTitle = command.auctionTitle,
+                    winningAmount = command.finalAmount,
+                    sellerPixKey = sellerPixKey
+                )
             )
-
-            val providerMessageId = telegramGateway.sendWinnerMessage(winner.telegramChatId!!, messagePayload)
-
-            notification.markSent(providerMessageId)
-            notificationRepository.save(notification)
-
-            log.info("Notificação de vencedor enviada com sucesso para leilão {}", command.auctionId)
-
+            telegramNotification.markSent(providerMessageId)
+            notificationRepository.save(telegramNotification)
+            log.info("Notificação Telegram de vencedor enviada para leilão {}", command.auctionId)
         } catch (ex: TelegramSendException) {
             log.error("Falha ao enviar Telegram para leilão {}: {}", command.auctionId, ex.message)
-
-            notification.markFailed(ex.message ?: "Erro desconhecido")
-            notificationRepository.save(notification)
-
+            telegramNotification.markFailed(ex.message ?: "Erro desconhecido")
+            notificationRepository.save(telegramNotification)
             createAdminAlert(command, "Falha ao enviar Telegram: ${ex.message}")
         }
-
-        // IMPORTANTE: o leilão continua encerrado independentemente do resultado da notificação
     }
 
     private fun createAdminAlert(command: WinnerNotificationCommand, message: String) {
@@ -109,4 +132,7 @@ class SendWinnerNotificationUseCase(
         )
         log.warn("Alerta administrativo criado para leilão {}: {}", command.auctionId, message)
     }
+
+    private fun formatBRL(amount: Int): String =
+        String.format("%.2f", amount.toDouble()).replace(".", ",")
 }

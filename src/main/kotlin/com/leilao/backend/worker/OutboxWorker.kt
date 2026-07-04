@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.leilao.backend.auctions.infrastructure.AuctionRepository
 import com.leilao.backend.notifications.application.PaymentConfirmedNotificationCommand
 import com.leilao.backend.notifications.application.PaymentDeclaredNotificationCommand
+import com.leilao.backend.notifications.application.OutbidNotificationCommand
+import com.leilao.backend.notifications.application.SendOutbidNotificationUseCase
 import com.leilao.backend.notifications.application.SendPaymentConfirmedNotificationUseCase
 import com.leilao.backend.notifications.application.SendPaymentDeclaredNotificationUseCase
 import com.leilao.backend.notifications.application.SendWinnerNotificationUseCase
@@ -36,6 +38,7 @@ class OutboxWorker(
     private val sendWinnerNotificationUseCase: SendWinnerNotificationUseCase,
     private val sendPaymentDeclaredNotificationUseCase: SendPaymentDeclaredNotificationUseCase,
     private val sendPaymentConfirmedNotificationUseCase: SendPaymentConfirmedNotificationUseCase,
+    private val sendOutbidNotificationUseCase: SendOutbidNotificationUseCase,
     private val auctionRepository: AuctionRepository,
     private val objectMapper: ObjectMapper
 ) {
@@ -66,6 +69,7 @@ class OutboxWorker(
                 "AUCTION_FINISHED_WITH_WINNER" -> handleAuctionFinishedWithWinner(event)
                 "PAYMENT_DECLARED" -> handlePaymentDeclared(event)
                 "PAYMENT_CONFIRMED" -> handlePaymentConfirmed(event)
+                "BID_OUTBID" -> handleBidOutbid(event)
                 else -> log.warn("OutboxWorker: tipo de evento desconhecido: {}", event.eventType)
             }
 
@@ -104,6 +108,19 @@ class OutboxWorker(
                 sellerId = UUID.fromString(payload["sellerId"] as String),
                 auctionTitle = payload["auctionTitle"] as String,
                 amount = payload["amount"] as Int
+            )
+        )
+    }
+
+    private fun handleBidOutbid(event: OutboxEvent) {
+        val payload = objectMapper.readValue(event.payloadJson, Map::class.java)
+
+        sendOutbidNotificationUseCase.execute(
+            OutbidNotificationCommand(
+                auctionId = UUID.fromString(payload["auctionId"] as String),
+                outbidUserId = UUID.fromString(payload["outbidUserId"] as String),
+                auctionTitle = payload["auctionTitle"] as String,
+                newAmount = payload["newAmount"] as Int
             )
         )
     }

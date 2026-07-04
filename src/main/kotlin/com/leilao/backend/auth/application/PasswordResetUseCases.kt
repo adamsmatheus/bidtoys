@@ -1,5 +1,7 @@
 package com.leilao.backend.auth.application
 
+import com.leilao.backend.notifications.infrastructure.whatsapp.EvolutionGateway
+import com.leilao.backend.notifications.infrastructure.whatsapp.EvolutionSendException
 import com.leilao.backend.shared.email.EmailService
 import com.leilao.backend.shared.exception.BusinessException
 import com.leilao.backend.users.infrastructure.UserRepository
@@ -14,7 +16,8 @@ import kotlin.random.Random
 class ForgotPasswordUseCase(
     private val userRepository: UserRepository,
     private val passwordResetStore: PasswordResetStore,
-    private val emailService: EmailService
+    private val emailService: EmailService,
+    private val whatsAppGateway: EvolutionGateway
 ) {
     private val log = LoggerFactory.getLogger(ForgotPasswordUseCase::class.java)
 
@@ -29,8 +32,16 @@ class ForgotPasswordUseCase(
 
         val code = String.format("%06d", Random.nextInt(0, 1_000_000))
         passwordResetStore.save(user.email, code)
+
         emailService.sendPasswordResetCode(user.email, code)
         log.info("[ForgotPassword] Código enviado via e-mail para usuário {}", user.id)
+
+        try {
+            whatsAppGateway.sendPasswordResetCode(user.phoneNumber, code)
+            log.info("[ForgotPassword] Código enviado via WhatsApp para usuário {}", user.id)
+        } catch (ex: EvolutionSendException) {
+            log.warn("[ForgotPassword] Falha ao enviar WhatsApp para usuário {}: {}", user.id, ex.message)
+        }
     }
 }
 

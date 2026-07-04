@@ -1,5 +1,6 @@
 package com.leilao.backend.bids.application
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.leilao.backend.auctions.domain.Auction
 import com.leilao.backend.auctions.infrastructure.AuctionRepository
 import com.leilao.backend.bids.api.dto.PlaceBidRequest
@@ -10,6 +11,8 @@ import com.leilao.backend.shared.exception.ForbiddenException
 import com.leilao.backend.shared.exception.InvalidStateException
 import com.leilao.backend.shared.exception.NotFoundException
 import com.leilao.backend.users.infrastructure.UserRepository
+import com.leilao.backend.worker.outbox.OutboxEvent
+import com.leilao.backend.worker.outbox.OutboxEventRepository
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -22,7 +25,9 @@ data class PlaceBidResult(val bid: Bid, val auction: Auction)
 class PlaceBidUseCase(
     private val auctionRepository: AuctionRepository,
     private val bidRepository: BidRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val outboxEventRepository: OutboxEventRepository,
+    private val objectMapper: ObjectMapper
 ) {
 
     private val log = LoggerFactory.getLogger(PlaceBidUseCase::class.java)
@@ -34,7 +39,8 @@ class PlaceBidUseCase(
      * 3. Valida: status ativo, não é o dono, valor >= mínimo
      * 4. Salva o bid
      * 5. Atualiza auction (currentPrice, leadingBid, possível prorrogação)
-     * 6. Commit da transação
+     * 6. Emite evento de lance superado para o líder anterior (se houver)
+     * 7. Commit da transação
      *
      * O lock garante que dois lances simultâneos com o mesmo valor
      * sejam resolvidos pelo timestamp de persistência (quem commita primeiro).
@@ -93,6 +99,9 @@ class PlaceBidUseCase(
         val bidder = userRepository.findById(bidderId)
             .orElseThrow { NotFoundException("Usuário não encontrado") }
 
+        // Captura o líder anterior antes de ser substituído
+        val previousLeadingBidId = auction.leadingBidId
+
         val bid = bidRepository.save(
             Bid(
                 auction = auction,
@@ -106,8 +115,34 @@ class PlaceBidUseCase(
         auction.receiveNewBid(bid.id, bid.amount)
         auctionRepository.save(auction)
 
+        // Notifica o usuário cujo lance foi superado (se houver e for diferente do novo licitante)
+        if (previousLeadingBidId != null) {
+            val previousBid = bidRepository.findById(previousLeadingBidId).orElse(null)
+            if (previousBid != null && previousBid.bidderId != bidderId) {
+                publishOutbidEvent(auction, previousBid.bidderId, bid.amount)
+            }
+        }
+
         log.info("Lance R$ {} registrado no leilão {} por usuário {}", bid.amount, auctionId, bidderId)
 
         return PlaceBidResult(bid, auction)
+    }
+
+    private fun publishOutbidEvent(auction: Auction, outbidUserId: UUID, newAmount: Int) {
+        val payload = mapOf(
+            "auctionId" to auction.id.toString(),
+            "outbidUserId" to outbidUserId.toString(),
+            "auctionTitle" to auction.title,
+            "newAmount" to newAmount
+        )
+        outboxEventRepository.save(
+            OutboxEvent(
+                aggregateType = "BID",
+                aggregateId = auction.id,
+                eventType = "BID_OUTBID",
+                payloadJson = objectMapper.writeValueAsString(payload)
+            )
+        )
+        log.debug("Evento BID_OUTBID publicado para usuário {} no leilão {}", outbidUserId, auction.id)
     }
 }

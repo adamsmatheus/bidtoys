@@ -1,5 +1,6 @@
 package com.leilao.backend.bids
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.leilao.backend.auctions.domain.Auction
 import com.leilao.backend.auctions.domain.AuctionStatus
 import com.leilao.backend.auctions.infrastructure.AuctionRepository
@@ -9,13 +10,15 @@ import com.leilao.backend.bids.domain.Bid
 import com.leilao.backend.bids.infrastructure.BidRepository
 import com.leilao.backend.shared.exception.BusinessException
 import com.leilao.backend.shared.exception.ForbiddenException
-import com.leilao.backend.shared.exception.InvalidStateException
 import com.leilao.backend.users.domain.User
 import com.leilao.backend.users.domain.UserRole
 import com.leilao.backend.users.domain.UserStatus
 import com.leilao.backend.users.infrastructure.UserRepository
+import com.leilao.backend.worker.outbox.OutboxEvent
+import com.leilao.backend.worker.outbox.OutboxEventRepository
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -30,8 +33,12 @@ class PlaceBidUseCaseTest {
     private val auctionRepository = mockk<AuctionRepository>()
     private val bidRepository = mockk<BidRepository>()
     private val userRepository = mockk<UserRepository>()
+    private val outboxEventRepository = mockk<OutboxEventRepository>()
+    private val objectMapper = ObjectMapper()
 
-    private val useCase = PlaceBidUseCase(auctionRepository, bidRepository, userRepository)
+    private val useCase = PlaceBidUseCase(
+        auctionRepository, bidRepository, userRepository, outboxEventRepository, objectMapper
+    )
 
     private val sellerId = UUID.randomUUID()
     private val bidderId = UUID.randomUUID()
@@ -68,7 +75,6 @@ class PlaceBidUseCaseTest {
             durationSeconds = 3600
         )
 
-        // Usar reflection para setar status como ACTIVE com ends_at futuro
         val statusField = Auction::class.java.getDeclaredField("status")
         statusField.isAccessible = true
         statusField.set(activeAuction, AuctionStatus.ACTIVE)
@@ -96,8 +102,64 @@ class PlaceBidUseCaseTest {
     }
 
     @Test
+    fun `deve emitir evento BID_OUTBID quando lance anterior existe`() {
+        val previousBidderId = UUID.randomUUID()
+        val previousBid = mockk<Bid> {
+            every { bidderId } returns previousBidderId
+        }
+
+        val previousLeadingBidId = UUID.randomUUID()
+        val leadingBidField = Auction::class.java.getDeclaredField("leadingBidId")
+        leadingBidField.isAccessible = true
+        leadingBidField.set(activeAuction, previousLeadingBidId)
+
+        val auctionId = activeAuction.id
+        val outboxSlot = slot<OutboxEvent>()
+
+        every { bidRepository.findByRequestId(any()) } returns Optional.empty()
+        every { auctionRepository.findByIdWithLock(auctionId) } returns Optional.of(activeAuction)
+        every { userRepository.findById(bidderId) } returns Optional.of(bidder)
+        every { bidRepository.save(any()) } answers { firstArg() }
+        every { auctionRepository.save(any()) } returns activeAuction
+        every { bidRepository.findById(previousLeadingBidId) } returns Optional.of(previousBid)
+        every { outboxEventRepository.save(capture(outboxSlot)) } answers { firstArg() }
+
+        useCase.execute(auctionId, PlaceBidRequest(amount = 110), bidderId)
+
+        val event = outboxSlot.captured
+        assertEquals("BID_OUTBID", event.eventType)
+        assertEquals("BID", event.aggregateType)
+        verify { outboxEventRepository.save(any()) }
+    }
+
+    @Test
+    fun `nao deve emitir evento BID_OUTBID quando mesmo usuario supera proprio lance`() {
+        val sameBidderPreviousBid = mockk<Bid> {
+            every { bidderId } returns bidderId  // mesmo usuário
+        }
+
+        val previousLeadingBidId = UUID.randomUUID()
+        val leadingBidField = Auction::class.java.getDeclaredField("leadingBidId")
+        leadingBidField.isAccessible = true
+        leadingBidField.set(activeAuction, previousLeadingBidId)
+
+        val auctionId = activeAuction.id
+
+        every { bidRepository.findByRequestId(any()) } returns Optional.empty()
+        every { auctionRepository.findByIdWithLock(auctionId) } returns Optional.of(activeAuction)
+        every { userRepository.findById(bidderId) } returns Optional.of(bidder)
+        every { bidRepository.save(any()) } answers { firstArg() }
+        every { auctionRepository.save(any()) } returns activeAuction
+        every { bidRepository.findById(previousLeadingBidId) } returns Optional.of(sameBidderPreviousBid)
+
+        useCase.execute(auctionId, PlaceBidRequest(amount = 110), bidderId)
+
+        verify(exactly = 0) { outboxEventRepository.save(any()) }
+    }
+
+    @Test
     fun `deve rejeitar lance abaixo do mínimo`() {
-        val request = PlaceBidRequest(amount = 105) // mínimo é 100 + 10 = 110
+        val request = PlaceBidRequest(amount = 105)
         val auctionId = activeAuction.id
 
         every { bidRepository.findByRequestId(any()) } returns Optional.empty()
@@ -116,7 +178,6 @@ class PlaceBidUseCaseTest {
         every { bidRepository.findByRequestId(any()) } returns Optional.empty()
         every { auctionRepository.findByIdWithLock(auctionId) } returns Optional.of(activeAuction)
 
-        // sellerId é o dono — usando o id do seller que foi gerado no domínio
         assertThrows<ForbiddenException> {
             useCase.execute(auctionId, request, seller.id)
         }

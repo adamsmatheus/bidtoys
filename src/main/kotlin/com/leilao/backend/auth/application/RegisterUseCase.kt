@@ -15,15 +15,15 @@ import org.springframework.transaction.annotation.Transactional
 class RegisterUseCase(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
-    private val telegramVerificationStore: TelegramVerificationStore
+    private val whatsAppVerificationStore: WhatsAppVerificationStore
 ) {
 
     @Transactional
     fun execute(request: RegisterRequest): User {
-        val (phoneNumber, chatId) = telegramVerificationStore.getIfVerified(request.telegramToken)
+        val phoneNumber = whatsAppVerificationStore.getIfVerified(request.whatsappToken)
             ?: throw BusinessException(
-                "Verificação do Telegram inválida ou expirada. Reinicie o processo.",
-                "TELEGRAM_NOT_VERIFIED",
+                "Verificação do WhatsApp inválida ou expirada. Reinicie o processo.",
+                "WHATSAPP_NOT_VERIFIED",
                 HttpStatus.UNPROCESSABLE_ENTITY
             )
 
@@ -40,7 +40,6 @@ class RegisterUseCase(
             email = request.email.lowercase().trim(),
             passwordHash = passwordEncoder.encode(request.password),
             phoneNumber = phoneNumber,
-            telegramChatId = chatId,
             emailVerified = true
         )
 
@@ -56,7 +55,7 @@ class RegisterUseCase(
         user.address = address
 
         val saved = userRepository.save(user)
-        telegramVerificationStore.remove(request.telegramToken)
+        whatsAppVerificationStore.remove(request.whatsappToken)
 
         return saved
     }

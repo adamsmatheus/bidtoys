@@ -38,6 +38,8 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.POST, "/api/auth/telegram/request-verification").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/auth/telegram/check/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/telegram/webhook").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/whatsapp/request-verification").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/whatsapp/verify-code").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/auctions").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/auctions/{id}").permitAll()
                     // WebSocket
