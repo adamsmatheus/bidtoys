@@ -6,6 +6,9 @@ import com.leilao.backend.auctions.api.dto.BuyerSummaryResponse
 import com.leilao.backend.auctions.api.dto.CancelAuctionRequest
 import com.leilao.backend.auctions.api.dto.CreateAuctionRequest
 import com.leilao.backend.auctions.api.dto.DeclarePaymentRequest
+import com.leilao.backend.auctions.api.dto.DisputeMessageRequest
+import com.leilao.backend.auctions.api.dto.DisputeMessageResponse
+import com.leilao.backend.auctions.api.dto.DisputePaymentRequest
 import com.leilao.backend.auctions.api.dto.PaymentReceiptResponse
 import com.leilao.backend.auctions.api.dto.UpdateAuctionRequest
 import com.leilao.backend.auctions.api.dto.UpdateShipmentStatusRequest
@@ -15,6 +18,10 @@ import com.leilao.backend.auctions.application.CreateAuctionUseCase
 import com.leilao.backend.auctions.application.DeclarePaymentUseCase
 import com.leilao.backend.auctions.application.DeleteAuctionUseCase
 import com.leilao.backend.auctions.application.DeleteAuctionImageUseCase
+import com.leilao.backend.auctions.application.DisputePaymentUseCase
+import com.leilao.backend.auctions.application.ListDisputeMessagesUseCase
+import com.leilao.backend.auctions.application.SendDisputeMessageUseCase
+import com.leilao.backend.auctions.application.SetCoverImageUseCase
 import com.leilao.backend.auctions.application.GetAuctionUseCase
 import com.leilao.backend.auctions.application.ListAuctionsUseCase
 import com.leilao.backend.auctions.application.ListBuyersUseCase
@@ -76,6 +83,10 @@ class AuctionController(
     private val uploadAuctionImageUseCase: UploadAuctionImageUseCase,
     private val uploadPaymentReceiptUseCase: UploadPaymentReceiptUseCase,
     private val deleteAuctionImageUseCase: DeleteAuctionImageUseCase,
+    private val setCoverImageUseCase: SetCoverImageUseCase,
+    private val disputePaymentUseCase: DisputePaymentUseCase,
+    private val sendDisputeMessageUseCase: SendDisputeMessageUseCase,
+    private val listDisputeMessagesUseCase: ListDisputeMessagesUseCase,
     private val auctionImageRepository: AuctionImageRepository,
     private val bidRepository: BidRepository,
     private val companyRepository: CompanyRepository
@@ -151,22 +162,60 @@ class AuctionController(
         @PathVariable id: UUID,
         @AuthenticationPrincipal principal: UserPrincipal
     ): AuctionResponse {
-        confirmPaymentUseCase.execute(id, principal.id, confirmed = true)
+        confirmPaymentUseCase.execute(id, principal.id)
         val auction = getAuctionUseCase.execute(id)
         val company = companyRepository.findByUserId(auction.seller.id).orElse(null)
         return AuctionResponse.from(auction, company = company)
     }
 
     @PostMapping("/{id}/dispute-payment")
-    @Operation(summary = "Vendedor contesta o pagamento declarado pelo vencedor")
+    @Operation(summary = "Vendedor contesta o pagamento declarado pelo vencedor, informando o motivo")
     fun disputePayment(
         @PathVariable id: UUID,
+        @Valid @RequestBody request: DisputePaymentRequest,
         @AuthenticationPrincipal principal: UserPrincipal
     ): AuctionResponse {
-        confirmPaymentUseCase.execute(id, principal.id, confirmed = false)
+        disputePaymentUseCase.execute(id, principal.id, request.reason)
         val auction = getAuctionUseCase.execute(id)
         val company = companyRepository.findByUserId(auction.seller.id).orElse(null)
         return AuctionResponse.from(auction, company = company)
+    }
+
+    @PostMapping("/{id}/dispute-messages")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Envia mensagem no chat de disputa de pagamento")
+    fun sendDisputeMessage(
+        @PathVariable id: UUID,
+        @Valid @RequestBody request: DisputeMessageRequest,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ): DisputeMessageResponse {
+        val msg = sendDisputeMessageUseCase.execute(id, principal.id, request.message)
+        return DisputeMessageResponse(
+            id = msg.id,
+            auctionId = id,
+            senderId = msg.senderId,
+            senderName = msg.senderName,
+            message = msg.message,
+            createdAt = msg.createdAt
+        )
+    }
+
+    @GetMapping("/{id}/dispute-messages")
+    @Operation(summary = "Lista mensagens do chat de disputa de pagamento")
+    fun listDisputeMessages(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ): List<DisputeMessageResponse> {
+        return listDisputeMessagesUseCase.execute(id, principal.id).map { msg ->
+            DisputeMessageResponse(
+                id = msg.id,
+                auctionId = id,
+                senderId = msg.senderId,
+                senderName = msg.senderName,
+                message = msg.message,
+                createdAt = msg.createdAt
+            )
+        }
     }
 
     @PatchMapping("/{id}/shipment-status")
@@ -299,5 +348,16 @@ class AuctionController(
         @AuthenticationPrincipal principal: UserPrincipal
     ) {
         deleteAuctionImageUseCase.execute(id, imageId, principal.id)
+    }
+
+    @PutMapping("/{id}/images/{imageId}/cover")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Define uma foto como capa do leilão (posição 0)")
+    fun setCoverImage(
+        @PathVariable id: UUID,
+        @PathVariable imageId: UUID,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ) {
+        setCoverImageUseCase.execute(id, imageId, principal.id)
     }
 }

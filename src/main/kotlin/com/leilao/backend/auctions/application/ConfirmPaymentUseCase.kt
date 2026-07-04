@@ -22,64 +22,46 @@ class ConfirmPaymentUseCase(
 ) {
 
     @Transactional
-    fun execute(auctionId: UUID, sellerId: UUID, confirmed: Boolean) {
+    fun execute(auctionId: UUID, sellerId: UUID) {
         val auction = auctionRepository.findByIdWithLock(auctionId)
             .orElseThrow { NoSuchElementException("Leilão $auctionId não encontrado") }
 
         val fromStatus = auction.status
-
-        if (confirmed) {
-            auction.confirmPayment(sellerId)
-        } else {
-            auction.disputePayment(sellerId)
-        }
-
+        auction.confirmPayment(sellerId)
         auctionRepository.save(auction)
-
-        val toStatus = if (confirmed) AuctionStatus.PAYMENT_CONFIRMED else AuctionStatus.PAYMENT_DISPUTED
-        val reason = if (confirmed) "Vendedor confirmou o recebimento do pagamento" else "Vendedor contestou o pagamento"
 
         statusHistoryRepository.save(
             AuctionStatusHistory(
                 auction = auction,
                 fromStatus = fromStatus,
-                toStatus = toStatus,
+                toStatus = AuctionStatus.PAYMENT_CONFIRMED,
                 changedByUserId = sellerId,
-                reason = reason
+                reason = "Vendedor confirmou o recebimento do pagamento"
             )
         )
 
         val winnerUserId = auction.winnerUserId!!
+        val payload = mapOf(
+            "auctionId" to auction.id.toString(),
+            "winnerUserId" to winnerUserId.toString(),
+            "sellerId" to sellerId.toString(),
+            "auctionTitle" to auction.title,
+            "amount" to auction.currentPriceAmount
+        )
 
-        if (confirmed) {
-            val payload = mapOf(
-                "auctionId" to auction.id.toString(),
-                "winnerUserId" to winnerUserId.toString(),
-                "sellerId" to sellerId.toString(),
-                "auctionTitle" to auction.title,
-                "amount" to auction.currentPriceAmount
+        outboxEventRepository.save(
+            OutboxEvent(
+                aggregateType = "AUCTION",
+                aggregateId = auction.id,
+                eventType = "PAYMENT_CONFIRMED",
+                payloadJson = objectMapper.writeValueAsString(payload)
             )
+        )
 
-            outboxEventRepository.save(
-                OutboxEvent(
-                    aggregateType = "AUCTION",
-                    aggregateId = auction.id,
-                    eventType = "PAYMENT_CONFIRMED",
-                    payloadJson = objectMapper.writeValueAsString(payload)
-                )
-            )
-
-            userNotificationBroadcastService.notifyPaymentConfirmed(
-                winnerId = winnerUserId,
-                auctionId = auction.id,
-                auctionTitle = auction.title
-            )
-        } else {
-            userNotificationBroadcastService.notifyPaymentDisputed(
-                winnerId = winnerUserId,
-                auctionId = auction.id,
-                auctionTitle = auction.title
-            )
-        }
+        userNotificationBroadcastService.notifyPaymentConfirmed(
+            winnerId = winnerUserId,
+            auctionId = auction.id,
+            auctionTitle = auction.title
+        )
     }
 }

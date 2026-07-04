@@ -117,6 +117,10 @@ class Auction(
     var paymentReceiptUrl: String? = null
         protected set
 
+    @Column(name = "dispute_reason", columnDefinition = "TEXT")
+    var disputeReason: String? = null
+        protected set
+
     @Version
     @Column(name = "version", nullable = false)
     var version: Long = 0
@@ -210,12 +214,15 @@ class Auction(
     }
 
     fun confirmPayment(sellerId: UUID) {
-        check(status == AuctionStatus.PAYMENT_DECLARED) {
+        check(status == AuctionStatus.PAYMENT_DECLARED || status == AuctionStatus.PAYMENT_DISPUTED) {
             "Pagamento só pode ser confirmado após ser declarado pelo vencedor"
         }
         check(seller.id == sellerId) { "Somente o vendedor pode confirmar o pagamento" }
         status = AuctionStatus.PAYMENT_CONFIRMED
-        shipmentStatus = ShipmentStatus.PENDING
+        disputeReason = null
+        if (shipmentStatus == null) {
+            shipmentStatus = ShipmentStatus.PENDING
+        }
     }
 
     fun requestDelivery(winnerId: UUID) {
@@ -242,12 +249,21 @@ class Auction(
         }
     }
 
-    fun disputePayment(sellerId: UUID) {
+    fun updatePaymentReceiptInDispute(winnerId: UUID, receiptUrl: String) {
+        check(status == AuctionStatus.PAYMENT_DISPUTED) {
+            "Comprovante só pode ser atualizado durante uma disputa de pagamento"
+        }
+        check(winnerUserId == winnerId) { "Somente o vencedor pode atualizar o comprovante" }
+        paymentReceiptUrl = receiptUrl
+    }
+
+    fun disputePayment(sellerId: UUID, reason: String) {
         check(status == AuctionStatus.PAYMENT_DECLARED) {
             "Pagamento só pode ser contestado após ser declarado pelo vencedor"
         }
         check(seller.id == sellerId) { "Somente o vendedor pode contestar o pagamento" }
         status = AuctionStatus.PAYMENT_DISPUTED
+        disputeReason = reason
     }
 
     /**

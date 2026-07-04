@@ -82,6 +82,19 @@ class UserNotificationBroadcastService(
         )
     }
 
+    fun notifyDisputeMessage(recipientId: UUID, auctionId: UUID, auctionTitle: String, senderName: String) {
+        send(
+            userId = recipientId,
+            auctionId = auctionId,
+            UserNotificationMessage(
+                type = "DISPUTE_MESSAGE",
+                title = "Nova mensagem na disputa",
+                message = "$senderName enviou uma mensagem no chat de disputa do leilão \"$auctionTitle\".",
+                auctionId = auctionId.toString()
+            )
+        )
+    }
+
     fun notifyShipmentStatusChanged(
         winnerId: UUID,
         auctionId: UUID,

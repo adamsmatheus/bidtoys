@@ -13,6 +13,27 @@ import com.leilao.backend.users.api.dto.AddressResponse
 import java.time.Instant
 import java.util.UUID
 
+data class DisputePaymentRequest(
+    @field:NotBlank(message = "Motivo da contestação é obrigatório")
+    @field:Size(max = 1000, message = "Motivo deve ter no máximo 1000 caracteres")
+    val reason: String
+)
+
+data class DisputeMessageRequest(
+    @field:NotBlank(message = "Mensagem é obrigatória")
+    @field:Size(max = 1000, message = "Mensagem deve ter no máximo 1000 caracteres")
+    val message: String
+)
+
+data class DisputeMessageResponse(
+    val id: UUID,
+    val auctionId: UUID,
+    val senderId: UUID,
+    val senderName: String,
+    val message: String,
+    val createdAt: Instant
+)
+
 data class AuctionImageResponse(
     val id: UUID,
     val fileUrl: String,
@@ -89,7 +110,8 @@ data class AuctionResponse(
     val holdShipment: Boolean = false,
     val shipmentStatus: ShipmentStatus? = null,
     val trackingCode: String? = null,
-    val paymentReceiptUrl: String? = null
+    val paymentReceiptUrl: String? = null,
+    val disputeReason: String? = null
 ) {
     companion object {
         fun from(
@@ -122,7 +144,8 @@ data class AuctionResponse(
             holdShipment = auction.holdShipment,
             shipmentStatus = auction.shipmentStatus,
             trackingCode = auction.trackingCode,
-            paymentReceiptUrl = auction.paymentReceiptUrl
+            paymentReceiptUrl = auction.paymentReceiptUrl,
+            disputeReason = auction.disputeReason
         )
     }
 }

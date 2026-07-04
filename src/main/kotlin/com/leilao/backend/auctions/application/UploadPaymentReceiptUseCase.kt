@@ -2,6 +2,7 @@ package com.leilao.backend.auctions.application
 
 import com.leilao.backend.auctions.domain.AuctionStatus
 import com.leilao.backend.auctions.infrastructure.AuctionRepository
+import org.springframework.transaction.annotation.Transactional
 import com.leilao.backend.shared.exception.BusinessException
 import com.leilao.backend.shared.exception.ForbiddenException
 import com.leilao.backend.shared.exception.InvalidStateException
@@ -21,6 +22,7 @@ class UploadPaymentReceiptUseCase(
     private val storageService: StorageService
 ) {
 
+    @Transactional
     fun execute(auctionId: UUID, userId: UUID, file: MultipartFile): String {
         val auction = auctionRepository.findById(auctionId)
             .orElseThrow { NotFoundException("Leilão não encontrado") }
@@ -29,9 +31,10 @@ class UploadPaymentReceiptUseCase(
             throw ForbiddenException("Somente o vencedor pode enviar o comprovante de pagamento")
         }
 
-        if (auction.status != AuctionStatus.FINISHED_WITH_WINNER) {
+        val allowedStatuses = setOf(AuctionStatus.FINISHED_WITH_WINNER, AuctionStatus.PAYMENT_DISPUTED)
+        if (auction.status !in allowedStatuses) {
             throw InvalidStateException(
-                "Comprovante só pode ser enviado antes de declarar o pagamento",
+                "Comprovante não pode ser enviado neste estado",
                 "INVALID_STATE_FOR_RECEIPT_UPLOAD"
             )
         }
@@ -59,7 +62,14 @@ class UploadPaymentReceiptUseCase(
         }
         val fileKey = "auctions/$auctionId/receipt/${UUID.randomUUID()}.$ext"
         storageService.store(file, fileKey)
+        val url = storageService.toUrl(fileKey)
 
-        return storageService.toUrl(fileKey)
+        // In dispute state, persist the new receipt URL directly on the auction
+        if (auction.status == AuctionStatus.PAYMENT_DISPUTED) {
+            auction.updatePaymentReceiptInDispute(userId, url)
+            auctionRepository.save(auction)
+        }
+
+        return url
     }
 }
